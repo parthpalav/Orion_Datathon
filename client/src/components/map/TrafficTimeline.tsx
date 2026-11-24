@@ -102,7 +102,7 @@ const TrafficTimeline: React.FC<TrafficTimelineProps> = ({
                         color: '#3b82f6',
                     }}
                 >
-                    {formatHour(currentHour)} · {formatDuration(timelineData[selected].durationMin)}
+                    {formatHour(timelineData[selected].hour)} · {formatDuration(timelineData[selected].durationMin)}
                 </div>
             </div>
 

@@ -9,6 +9,7 @@ interface SearchHistoryProps {
     onSelectSearch: (item: SearchHistoryItem) => void;
     theme?: 'light' | 'dark';
     isVisible?: boolean;
+    refreshKey?: number; // bump to reload after a new search is saved
 }
 
 const SearchHistory: React.FC<SearchHistoryProps> = ({
@@ -16,14 +17,15 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({
     onSelectSearch,
     theme = 'dark',
     isVisible = true,
+    refreshKey = 0,
 }) => {
     const [history, setHistory] = useState<SearchHistoryItem[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
-    // Load history on mount and when userId changes
+    // Load history on mount, when userId changes, and after each saved search
     useEffect(() => {
         loadHistory();
-    }, [userId]);
+    }, [userId, refreshKey]);
 
     const loadHistory = () => {
         const searches = getSearchHistory(userId);

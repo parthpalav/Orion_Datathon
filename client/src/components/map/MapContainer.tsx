@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import type { Route } from '../../services/predictionService';
-import { createRouteGeoJSON, calculateBounds, getTrafficColor } from '../../utils/mapUtils';
+import { createRouteGeoJSON, createTrafficGeoJSON, calculateBounds } from '../../utils/mapUtils';
 import '../../styles/mapbox-overrides.css';
 
 // Set Mapbox access token
@@ -12,7 +12,6 @@ interface MapContainerProps {
     sourceLocation?: [number, number];
     destinationLocation?: [number, number];
     route?: Route | null;
-    currentHour?: number;
     theme?: 'light' | 'dark';
     onMapLoad?: (map: mapboxgl.Map) => void;
 }
@@ -21,13 +20,15 @@ const MapContainer: React.FC<MapContainerProps> = ({
     sourceLocation,
     destinationLocation,
     route,
-    currentHour = new Date().getHours(),
     theme = 'dark',
     onMapLoad,
 }) => {
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<mapboxgl.Map | null>(null);
     const [mapLoaded, setMapLoaded] = useState(false);
+    // Bumped after each theme change: setStyle wipes our sources and layers, so the route must be redrawn.
+    const [styleVersion, setStyleVersion] = useState(0);
+    const appliedStyle = useRef<string | null>(null);
     const sourceMarker = useRef<mapboxgl.Marker | null>(null);
     const destMarker = useRef<mapboxgl.Marker | null>(null);
     // const userLocationMarker = useRef<mapboxgl.Marker | null>(null);
@@ -40,7 +41,7 @@ const MapContainer: React.FC<MapContainerProps> = ({
         map.current = new mapboxgl.Map({
             container: mapContainer.current,
             style: theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11',
-            center: [-74.006, 40.7128], // Default to NYC
+            center: [72.8777, 19.076], // Mumbai
             zoom: 12,
             pitch: 45,
             bearing: 0,
@@ -76,12 +77,6 @@ const MapContainer: React.FC<MapContainerProps> = ({
             geolocateControl.trigger();
         });
 
-        // Listen for geolocation updates
-        geolocateControl.on('geolocate', (_e: any) => {
-            // const userCoords: [number, number] = [e.coords.longitude, e.coords.latitude];
-            // setUserLocation(userCoords);
-        });
-
         return () => {
             if (map.current) {
                 map.current.remove();
@@ -95,6 +90,13 @@ const MapContainer: React.FC<MapContainerProps> = ({
         if (!map.current || !mapLoaded) return;
 
         const style = theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11';
+        if (appliedStyle.current === null) {
+            appliedStyle.current = style; // the map was created with this style
+            return;
+        }
+        if (appliedStyle.current === style) return;
+        appliedStyle.current = style;
+        map.current.once('style.load', () => setStyleVersion((v) => v + 1));
         map.current.setStyle(style);
     }, [theme, mapLoaded]);
 
@@ -156,144 +158,55 @@ const MapContainer: React.FC<MapContainerProps> = ({
         };
     }, [destinationLocation, mapLoaded]);
 
-    // Render route
+    // Render route: a soft glow underneath, then the per-segment congestion colours on top.
     useEffect(() => {
-        if (!map.current || !mapLoaded || !route) return;
+        const m = map.current;
+        if (!m || !mapLoaded || !route) return;
 
-        // Collect all coordinates from route segments
-        const allCoordinates: [number, number][] = [];
-        route.segments.forEach(segment => {
-            allCoordinates.push(...segment.coordinates);
-        });
-
+        const allCoordinates = route.segments.flatMap((segment) => segment.coordinates);
         if (allCoordinates.length === 0) return;
 
-        // Remove existing route layers
-        if (map.current.getLayer('route')) {
-            map.current.removeLayer('route');
-        }
-        if (map.current.getLayer('route-casing')) {
-            map.current.removeLayer('route-casing');
-        }
-        if (map.current.getSource('route')) {
-            map.current.removeSource('route');
-        }
+        const clear = () => {
+            for (const id of ['route-traffic', 'route-casing']) if (m.getLayer(id)) m.removeLayer(id);
+            for (const id of ['route-traffic', 'route']) if (m.getSource(id)) m.removeSource(id);
+        };
+        clear();
 
-        // Add route source
-        map.current.addSource('route', {
+        m.addSource('route', { type: 'geojson', data: createRouteGeoJSON(allCoordinates) });
+        m.addSource('route-traffic', {
             type: 'geojson',
-            data: createRouteGeoJSON(allCoordinates),
+            data: {
+                type: 'FeatureCollection',
+                features: route.segments.map((segment) => createTrafficGeoJSON(segment.coordinates, segment.congestionLevel)),
+            },
         });
-
-        // Add route casing (outer glow)
-        map.current.addLayer({
+        m.addLayer({
             id: 'route-casing',
             type: 'line',
             source: 'route',
-            layout: {
-                'line-join': 'round',
-                'line-cap': 'round',
-            },
-            paint: {
-                'line-color': 'rgba(59, 130, 246, 0.3)',
-                'line-width': 10,
-                'line-blur': 4,
-            },
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: { 'line-color': 'rgba(59, 130, 246, 0.3)', 'line-width': 12, 'line-blur': 4 },
         });
-
-        // Add main route line
-        map.current.addLayer({
-            id: 'route',
+        m.addLayer({
+            id: 'route-traffic',
             type: 'line',
-            source: 'route',
-            layout: {
-                'line-join': 'round',
-                'line-cap': 'round',
-            },
-            paint: {
-                'line-color': '#3b82f6',
-                'line-width': 6,
-            },
+            source: 'route-traffic',
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: { 'line-color': ['get', 'color'], 'line-width': 6 },
         });
 
-        // Fit map to route bounds with animation
-        const bounds = calculateBounds(allCoordinates);
-        map.current.fitBounds(bounds, {
-            padding: { top: 100, bottom: 100, left: 400, right: 100 },
-            duration: 1500,
-            essential: true,
-        });
-
-        return () => {
-            if (map.current) {
-                if (map.current.getLayer('route')) {
-                    map.current.removeLayer('route');
-                }
-                if (map.current.getLayer('route-casing')) {
-                    map.current.removeLayer('route-casing');
-                }
-                if (map.current.getSource('route')) {
-                    map.current.removeSource('route');
-                }
-            }
-        };
-    }, [route, mapLoaded]);
-
-    // Render traffic overlay based on current hour
-    useEffect(() => {
-        if (!map.current || !mapLoaded || !route) return;
-
-        // Remove existing traffic layers
-        route.segments.forEach((_, index) => {
-            const layerId = `traffic-${index}`;
-            if (map.current!.getLayer(layerId)) {
-                map.current!.removeLayer(layerId);
-            }
-            if (map.current!.getSource(layerId)) {
-                map.current!.removeSource(layerId);
-            }
-        });
-
-        // Add traffic overlay for each segment
-        route.segments.forEach((segment, index) => {
-            const layerId = `traffic-${index}`;
-            const color = getTrafficColor(segment.congestionLevel);
-
-            map.current!.addSource(layerId, {
-                type: 'geojson',
-                data: createRouteGeoJSON(segment.coordinates),
+        if (styleVersion === 0 || !m.getBounds()?.contains(allCoordinates[0])) {
+            m.fitBounds(calculateBounds(allCoordinates), {
+                padding: { top: 100, bottom: 100, left: 400, right: 100 },
+                duration: 1500,
+                essential: true,
             });
-
-            map.current!.addLayer({
-                id: layerId,
-                type: 'line',
-                source: layerId,
-                layout: {
-                    'line-join': 'round',
-                    'line-cap': 'round',
-                },
-                paint: {
-                    'line-color': color,
-                    'line-width': 8,
-                    'line-opacity': 0.6,
-                },
-            }, 'route-casing'); // Add below route layers
-        });
+        }
 
         return () => {
-            if (map.current) {
-                route.segments.forEach((_, index) => {
-                    const layerId = `traffic-${index}`;
-                    if (map.current!.getLayer(layerId)) {
-                        map.current!.removeLayer(layerId);
-                    }
-                    if (map.current!.getSource(layerId)) {
-                        map.current!.removeSource(layerId);
-                    }
-                });
-            }
+            if (map.current) clear();
         };
-    }, [route, currentHour, mapLoaded]);
+    }, [route, mapLoaded, styleVersion]);
 
     return (
         <div

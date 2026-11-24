@@ -292,7 +292,7 @@ const InputPanel: React.FC<InputPanelProps> = ({
                     marginBottom: '1.5rem',
                 }}
             >
-                AI-powered route prediction and optimization
+                Route alternatives, travel times and fuel for any departure
             </p>
 
             <form onSubmit={handleSubmit}>
@@ -493,7 +493,7 @@ const InputPanel: React.FC<InputPanelProps> = ({
                 }}
             >
                 <p style={{ fontSize: '0.75rem', color: theme === 'dark' ? '#a0a0a0' : '#666', margin: 0 }}>
-                    💡 Our AI analyzes historical traffic patterns, real-time data, and predictive models to recommend the best routes and times for your journey.
+                    💡 Travel times use Mapbox traffic data: live for "leave now", typical traffic for later departures. Fuel and CO₂ use the UK DfT speed–fuel curve.
                 </p>
             </div>
         </motion.div>

@@ -10,22 +10,22 @@ export const ScrollSections: React.FC<ScrollSectionsProps> = ({ theme }) => {
     {
       title: 'The Vision',
       subtitle: 'Urban traffic intelligence reimagined',
-      description: 'ORION transforms chaotic city traffic into a symphony of efficiency through real-time AI analysis and predictive optimization.',
+      description: 'ORION turns Mumbai traffic data into plain answers: which route, when to leave, and what it costs in time, fuel and CO₂.',
     },
     {
       title: 'Commercial Intelligence',
       subtitle: 'Fleet optimization at scale',
-      description: 'Reduce delivery times by 40%. Cut fuel costs dramatically. Real-time route optimization that learns from every journey.',
+      description: 'Compare real route alternatives by travel time and fuel use, and pick the departure slot that keeps vehicles out of the worst traffic.',
     },
     {
       title: 'Private Navigation',
       subtitle: 'Your personal traffic advisor',
-      description: 'Never sit in traffic again. AI-powered predictions that route you around congestion before it forms.',
+      description: 'See how long a trip takes at every hour of the day, find the fastest time to leave, and the best day within a date range.',
     },
     {
-      title: 'Deep Learning Core',
-      subtitle: 'Intelligence that evolves',
-      description: 'Neural networks trained on billions of data points. Pattern recognition that predicts traffic 30 minutes ahead with 95% accuracy.',
+      title: 'Real Data Core',
+      subtitle: 'Grounded in measurement',
+      description: 'Travel times come from Mapbox live and typical traffic, and fuel from a published government speed–fuel curve. No invented numbers.',
     },
     {
       title: 'Mission Forward',

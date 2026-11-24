@@ -1,4 +1,4 @@
-// MapView Page - Main AI-Powered Traffic Intelligence Platform
+// MapView Page - route planner with real alternatives, timeline and insights
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -32,7 +32,9 @@ const MapView: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [currentHour, setCurrentHour] = useState(new Date().getHours());
     const [selectedRouteType, setSelectedRouteType] = useState<'best' | 'fuel-efficient'>('best');
-    const [showHistory, setShowHistory] = useState(true);
+    // Closed by default: the history panel sits over the search form.
+    const [showHistory, setShowHistory] = useState(false);
+    const [historyVersion, setHistoryVersion] = useState(0);
 
     const handlePredictionSubmit = async (data: {
         source: Location;
@@ -66,6 +68,7 @@ const MapView: React.FC = () => {
                     data.departureTime,
                     data.dateRange
                 );
+                setHistoryVersion((v) => v + 1);
             }
         } catch (error) {
             console.error('Prediction failed:', error);
@@ -108,6 +111,7 @@ const MapView: React.FC = () => {
             setDynamicPrediction(result);
             setCurrentHour(item.departureTime.getHours());
             setSelectedRouteType('best');
+            setShowHistory(false);
         } catch (error) {
             console.error('Failed to reload route:', error);
             alert('Failed to reload route. Please try again.');
@@ -135,7 +139,6 @@ const MapView: React.FC = () => {
                 sourceLocation={sourceLocation}
                 destinationLocation={destinationLocation}
                 route={currentRoute}
-                currentHour={currentHour}
                 theme={theme}
             />
 
@@ -280,6 +283,7 @@ const MapView: React.FC = () => {
                     onSelectSearch={handleHistoryItemClick}
                     theme={theme}
                     isVisible={showHistory}
+                    refreshKey={historyVersion}
                 />
             )}
 

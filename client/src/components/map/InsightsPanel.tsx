@@ -1,4 +1,4 @@
-// InsightsPanel Component - AI-powered insights dashboard
+// InsightsPanel Component - route insights from the route planner
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import type { Route, TrafficPrediction } from '../../services/predictionService';
