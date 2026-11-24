@@ -1,9 +1,13 @@
 # Node
 node_modules
 .env
-.env.local
-.env.production
-.env.*.local
+.env.*
+!.env.example
+
+# Logs and OS files
+*.log
+logs/
+.DS_Store
 
 # Vite
 dist
@@ -19,5 +23,5 @@ __pycache__/
 *.egg
 *.egg-info/
 
-# Deployment guides with sensitive info
-QUICK_DEPLOY_BACKEND.md
+# Firebase local cache
+.firebase/

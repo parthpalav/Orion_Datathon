@@ -98,7 +98,7 @@ const handleSignup = async (req: Request, res: Response) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId: user._id, email: user.email },
-      process.env.JWT_SECRET || 'your-secret-key-change-this',
+      process.env.JWT_SECRET as string,
       { expiresIn: '7d' }
     );
 
@@ -179,7 +179,7 @@ router.post('/login', loginValidation, async (req: Request, res: Response) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId: user._id, email: user.email },
-      process.env.JWT_SECRET || 'your-secret-key-change-this',
+      process.env.JWT_SECRET as string,
       { expiresIn: '7d' }
     );
 
@@ -256,7 +256,7 @@ router.post('/google', async (req: Request, res: Response) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId: user._id, email: user.email },
-      process.env.JWT_SECRET || 'your-secret-key-change-this',
+      process.env.JWT_SECRET as string,
       { expiresIn: '7d' }
     );
 
@@ -304,7 +304,7 @@ router.get('/me', async (req: Request, res: Response) => {
     // Verify token
     const decoded: any = jwt.verify(
       token,
-      process.env.JWT_SECRET || 'your-secret-key-change-this'
+      process.env.JWT_SECRET as string
     );
 
     // Find user

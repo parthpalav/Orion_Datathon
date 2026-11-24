@@ -12,6 +12,13 @@ import newsRoutes from './routes/news';
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config({ path: path.resolve(__dirname, '../.env'), override: true });
 
+// Refuse to boot without required secrets: a missing JWT_SECRET would make tokens forgeable.
+const missingEnv = ['JWT_SECRET', 'MONGO_URI'].filter((key) => !process.env[key]);
+if (missingEnv.length > 0) {
+  console.error(`❌ Missing required environment variables: ${missingEnv.join(', ')}`);
+  process.exit(1);
+}
+
 // Initialize Express app
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
@@ -69,10 +76,11 @@ const startServer = async () => {
     // Connect to MongoDB
     await connectDB();
   } catch (error) {
-    console.warn('⚠️  MongoDB connection failed, but continuing anyway:', (error as Error).message);
+    // Without the DB every auth request hangs, so exit and let the host restart us.
+    console.error('❌ MongoDB connection failed, exiting:', (error as Error).message);
+    process.exit(1);
   }
-  
-  // Start listening regardless of MongoDB status
+
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
