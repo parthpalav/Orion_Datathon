@@ -12,6 +12,10 @@ import News from "./pages/News";
 import ProtectedRoute from "./components/ProtectedRoute";
 import "./index.css";
 
+// Render's free tier sleeps after 15 idle minutes; wake the API while the user reads the landing page.
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+fetch(API_URL.replace(/\/api\/?$/, "") + "/health").catch(() => {});
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>

@@ -193,9 +193,10 @@ Scratch scripts only, outside `src/`. Record results under Decisions.
 
 ### P8: Deploy and demo
 
-- [ ] **P8.1** Render: apply the cleaned `render.yaml`, set dashboard env values, health check at `/api/health`. The client pings the backend on load because the free tier sleeps.
+- [ ] **P8.1** Render: apply the cleaned `render.yaml`, set dashboard env values, health check at `/health`. The client pings the backend on load because the free tier sleeps.
+  - Status 2026-11-24: `render.yaml` is clean and the client warm-up ping is in `client/src/main.tsx`. **USER:** set the dashboard secrets (`MONGO_URI` with the new password, `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `MAPBOX_TOKEN`, and later `GEMINI_API_KEY`, `TOMTOM_API_KEY`) and deploy.
 - [ ] **P8.2** Deploy `client/dist` to Firebase Hosting with production env. Build with `VITE_API_URL=https://orionmaps-api.onrender.com/api npm run build`, since the root `.env` holds local values.
-- [ ] **P8.3** Rewrite `README.md`: what is real, architecture, local setup, data sources, limits.
+- [x] **P8.3** Rewrite `README.md`: what is real, architecture, local setup, data sources, limits.
 - [ ] **P8.4** Write and run an end-to-end demo script on the deployed URLs: sign up → plan Andheri→BKC with a date range → timeline → corridor heatmap → ATLAS question → news.
 
 ## Verification after every phase
@@ -261,3 +262,4 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** (Claude Opus 5.5) P4.2 and P4.3 written (collector, offline tests, cron workflow, ml CI job); live check waits on the TomTom key.
 - **2026-11-24** (Claude Opus 5.5) P5.1 done: Google News RSS headlines with relevance filter and dedupe, 4 tests.
 - **2026-11-24** (Claude Opus 5.5) P5.2 partly done (real headlines, keyword categories, cache; Gemini summaries wait on the key). P5.3 done: cards link to real articles, badge colour bug fixed.
+- **2026-11-24** (Claude Opus 5.5) P8.1 code part done (warm-up ping); P8.3 done (README rewritten around what is real, setup, sources and limits).
