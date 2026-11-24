@@ -77,10 +77,10 @@ React (Firebase Hosting) ──▶ Express (Render free) ──▶ Mapbox Direct
 - [x] **P0.6 USER** Create a new MongoDB Atlas M0 (free) cluster. The old cluster in `server/.env` no longer exists (its DNS returns NXDOMAIN), so login and signup cannot work.
   - Create a database user, allow network access from `0.0.0.0/0` (Render and GitHub Actions have no fixed IPs), and put the connection string in `server/.env` as `MONGO_URI`.
   - Accept: `cd server && npm run dev` logs `MongoDB connected`.
-- [ ] **P0.7 USER** Get the API keys the next phases need, and put them in `server/.env`:
+- [ ] **P0.7 USER** Get the API keys the next phases need, and put them in the root `.env`:
   - `GEMINI_API_KEY` from Google AI Studio (aistudio.google.com).
   - `TOMTOM_API_KEY` from developer.tomtom.com (free tier).
-  - `MAPBOX_TOKEN`: the same `pk.` token as `client/.env.development` is fine.
+  - `MAPBOX_TOKEN`: the same `pk.` token as `VITE_MAPBOX_TOKEN` is fine.
 - [x] **P0.5** Server fails fast at boot if `JWT_SECRET` or `MONGO_URI` is missing. Remove the hardcoded JWT secret fallbacks in `server/src/routes/auth.ts`.
   - Accept: starting the server without `JWT_SECRET` exits with a clear error.
 
@@ -109,7 +109,7 @@ Scratch scripts only, outside `src/`. Record results under Decisions.
   - Scripts and config: `deploy*.sh`, `start-*.sh`, `setup-ml-service.sh`, the `firebase.json` functions block.
   - Accept: `npm run build` passes in `client/` and `server/`.
 - [x] **P2.2** Clean environment config.
-  - One `server/.env.example` and one `client/.env.example`.
+  - One root `.env.example` for both apps (originally one per app; merged later, see Decisions).
   - Trim `render.yaml` to variables the code reads. Add `MONGO_URI`, `GEMINI_API_KEY`, `MAPBOX_SECRET_TOKEN`, `CORS_ORIGINS`.
   - Read `CORS_ORIGINS` in `server/src/index.ts`.
   - Fix `dotenv` load order so routes see env values.
@@ -191,7 +191,7 @@ Scratch scripts only, outside `src/`. Record results under Decisions.
 ### P8: Deploy and demo
 
 - [ ] **P8.1** Render: apply the cleaned `render.yaml`, set dashboard env values, health check at `/api/health`. The client pings the backend on load because the free tier sleeps.
-- [ ] **P8.2** Deploy `client/dist` to Firebase Hosting with production env.
+- [ ] **P8.2** Deploy `client/dist` to Firebase Hosting with production env. Build with `VITE_API_URL=https://orionmaps-api.onrender.com/api npm run build`, since the root `.env` holds local values.
 - [ ] **P8.3** Rewrite `README.md`: what is real, architecture, local setup, data sources, limits.
 - [ ] **P8.4** Write and run an end-to-end demo script on the deployed URLs: sign up → plan Andheri→BKC with a date range → timeline → corridor heatmap → ATLAS question → news.
 
@@ -228,6 +228,7 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** P2.4: split `server/src/app.ts` (Express app, importable by tests) from `server/src/index.ts` (env check, DB connect, listen). Bumped `@types/node` to 22 because vitest 5 requires it, and set `engines.node >=22`.
 - **2026-11-24** P0.6: new Atlas M0 cluster `orion` in Mumbai (AWS ap-south-1), database `orion`, user `parthspalav_db_user` (auto-created, Atlas Admin role). IP access list: the user's home IP plus `0.0.0.0/0`. Smoke test passed against it: signup, login, `/me`, and 401 on chat without a token. The test user was deleted afterwards. If the DB password is rotated, update the password inside `MONGO_URI` in `server/.env` (and in Render).
 - **2026-11-24** Retire the Flask ML service. The old model trained on random synthetic San Francisco data with target leakage, so none of it is kept except the TomTom request logic.
+- **2026-11-24** Merged all env files into one root `.env` (and one root `.env.example`), so each secret lives in one place. The server reads it via `server/src/config/env.ts` (`../../../.env`, same from `src` and `dist`); Vite reads it via `envDir: '..'` and exposes only `VITE_*` keys. Removed `server/.env`, `client/.env`, `client/.env.development` and `client/.env.production`. The production client build sets `VITE_API_URL` on the command line (P8.2). This supersedes the earlier per-app env entries above. To rotate the DB password, edit `MONGO_URI` in the root `.env` (and in Render).
 
 ## Session log
 
@@ -238,3 +239,4 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** (Claude Opus 5.5) P2.3 done: shared auth middleware, rate limits, body limits, error handler. The 401 check is verified by a test in P2.4.
 - **2026-11-24** (Claude Opus 5.5) P2.4 done: vitest in both apps (server 4 tests, client 1), GitHub Actions CI. Phase P2 complete.
 - **2026-11-24** (Claude Opus 5.5) P0.6 done with the user via the browser: new Atlas cluster, `MONGO_URI` in `server/.env`, auth smoke test passed.
+- **2026-11-24** (Claude Opus 5.5) Merged env files into a single root `.env`; server boot, DB connect, both builds and tests verified.
