@@ -100,7 +100,7 @@ const News: React.FC = () => {
       Weather: theme === 'dark' ? '#06b6d4' : '#0891b2',
       Other: theme === 'dark' ? '#8b5cf6' : '#7c3aed'
     };
-    return colors[category] || theme === 'dark' ? '#6b7280' : '#4b5563';
+    return colors[category] || (theme === 'dark' ? '#6b7280' : '#4b5563');
   };
 
   return (
@@ -259,7 +259,7 @@ const News: React.FC = () => {
                 lineHeight: 1.6,
               }}
             >
-              Real-time updates on traffic, road conditions, and transportation news in Mumbai
+              Latest headlines on traffic, roads and transit in Mumbai, from Google News
             </p>
             
             {/* Last Updated & Refresh */}
@@ -459,10 +459,10 @@ const News: React.FC = () => {
             >
               {filteredArticles.map((article, index) => (
                 <motion.div
-                  key={index}
+                  key={article.url}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1, duration: 0.5 }}
+                  transition={{ delay: Math.min(index, 10) * 0.05, duration: 0.5 }}
                   whileHover={{ y: -4 }}
                   style={{
                     background: theme === 'dark' ? '#141414' : '#ffffff',
@@ -515,7 +515,7 @@ const News: React.FC = () => {
                         color: theme === 'dark' ? '#a0a0a0' : '#666666',
                       }}
                     >
-                      • {article.timestamp}
+                      • {new Date(article.timestamp).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
                     </span>
                   </div>
 
@@ -532,10 +532,13 @@ const News: React.FC = () => {
                       overflow: 'hidden',
                     }}
                   >
-                    {article.headline}
+                    <a href={article.url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
+                      {article.headline}
+                    </a>
                   </h3>
 
                   {/* Article Summary */}
+                  {article.summary && (
                   <p
                     style={{
                       fontSize: '1rem',
@@ -550,6 +553,7 @@ const News: React.FC = () => {
                   >
                     {article.summary}
                   </p>
+                  )}
                 </motion.div>
               ))}
             </motion.div>

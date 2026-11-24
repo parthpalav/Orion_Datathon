@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { dedupe, isRelevant, parseFeed } from './news';
+import { categorise } from '../routes/news';
 
 const feed = (items: string) => `<?xml version="1.0"?><rss version="2.0"><channel><title>x</title>${items}</channel></rss>`;
 const item = (title: string, source: string, date: string) =>
@@ -33,5 +34,13 @@ describe('news', () => {
     expect(isRelevant(h('Bandra-Dharavi bridge to become 10 lanes'))).toBe(true);
     expect(isRelevant(h('Anupam Kher questions Mumbai airport after flight diverted'))).toBe(false);
     expect(isRelevant(h('Ahmedabad civic body to upgrade 800 bus stops'))).toBe(false);
+  });
+
+  it('categorises headlines by keyword, most specific first', () => {
+    expect(categorise('Scooter rider dies after falling under BEST bus on SCLR')).toBe('Accident');
+    expect(categorise('Waterlogging slows traffic at Andheri subway')).toBe('Weather');
+    expect(categorise('Mumbai Metro Line 2B block cleared')).toBe('Transit');
+    expect(categorise('Bandra-Dharavi bridge to become 10 lanes')).toBe('Construction');
+    expect(categorise('Traffic diversion at Dadar for rally')).toBe('Traffic');
   });
 });

@@ -5,7 +5,7 @@ This file is the single source of truth for the rebuild. Any agent or person pic
 ## Status
 
 - **Current phase:** P4 (data collection). P0, P2 and P3 agent tasks are done. P1.2 and P1.3 wait on keys.
-- **Next task:** P5.2 without the Gemini part (keyword categories and caching), then P5.3. P4.2 and P4.3 are written and wait on `TOMTOM_API_KEY` plus GitHub secrets for their live check. P1.2 and P1.3 wait on keys from P0.7.
+- **Next task:** everything left needs keys: P1.2 and P4 live runs (TomTom), P1.3, P5.2 summaries and P6 (Gemini). P7 needs 3 weeks of P4 data. P8 can be prepared. P4.2 and P4.3 are written and wait on `TOMTOM_API_KEY` plus GitHub secrets for their live check. P1.2 and P1.3 wait on keys from P0.7.
 - **Blockers:** waiting on the user for P0.2 (rotate secrets), P0.4 (purge history) and P0.7 (Gemini and TomTom keys).
 - **Last updated:** 2026-11-24
 
@@ -164,7 +164,8 @@ Scratch scripts only, outside `src/`. Record results under Decisions.
 
 - [x] **P5.1** `server/src/services/news.ts`: fetch Google News RSS for Mumbai traffic queries (no key needed), parse with `fast-xml-parser`, dedupe.
 - [ ] **P5.2** One batched Gemini call classifies each item and writes a one-line summary (JSON output). Cache in Mongo for 30 minutes. If Gemini fails, return the raw headlines. Remove the hardcoded fake articles and the false "Using cached data" message.
-- [ ] **P5.3** `client/src/pages/News.tsx`: link each card to its real article URL. Fix the badge colour precedence bug.
+  - Status 2026-11-24: fake articles and the Featherless call are gone. `/api/news` now returns real headlines with keyword categories (no LLM) from a 30-minute in-memory cache, and serves the last good copy if a refresh fails. Still to do once `GEMINI_API_KEY` exists: the batched Gemini call for one-line summaries (the `summary` field is empty until then; the UI hides it).
+- [x] **P5.3** `client/src/pages/News.tsx`: link each card to its real article URL. Fix the badge colour precedence bug.
 - Accept: every news card opens a real article.
 
 ### P6: ATLAS with real tools
@@ -238,6 +239,7 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** P4.1: `ml/corridors.json` has 11 corridors and 39 points (WEH, EEH, S V Road, LBS Marg, Sion-Panvel, Sea Link, JVLR, SCLR, Andheri-Kurla Road, Ghodbunder Road, Coastal Road). Hand-picked coordinates mostly missed the roads, so points were placed evenly along each road's own steps in a Mapbox Directions route, then checked with Mapbox Tilequery (all within 1 m of the named road or one of its flyovers). Four points that landed on a different road were dropped. Budget: 39 points every 30 min is 1,872 TomTom calls a day, under the 2,500 free limit.
 - **2026-11-24** P4.4: removed the Flask `ml-service/` (tracked files), `server/src/routes/ml.ts`, `pyrightconfig.json` (pointed at the old venv), the server's `axios` dependency (only the ML proxy used it), and the `ML_SERVICE_URL` and `VITE_API_BASE_URL` env keys. An untracked, gitignored `ml-service/ml-service.log` is still on disk; delete the folder by hand.
 - **2026-11-24** P5.1: `server/src/services/news.ts` reads Google News RSS (5 Mumbai queries, last 2 days), keeps only headlines that name a Mumbai-region place and a mobility word, dedupes, and returns the newest 30. Live run returned 30 relevant headlines (metro, bridges, a BEST bus crash on SCLR). Google's feed terms allow personal, non-commercial feed-reader use; fine for this non-commercial demo, but revisit before any commercial use.
+- **2026-11-24** P5.2 partial: news cache is in memory, not Mongo. One Render instance, and the RSS feed is free and fast, so a cold start just refetches. Categories come from keyword rules (most specific first: Accident, Weather, Transit, Construction, Traffic), so the page works without Gemini. Live check: 30 articles (10 Accident, 8 Transit, 6 Construction, 5 Traffic, 1 Weather); second request served from cache.
 
 ## Session log
 
@@ -258,3 +260,4 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** (Claude Opus 5.5) P4.4 done: Flask ML service and its proxy removed; server tests pass.
 - **2026-11-24** (Claude Opus 5.5) P4.2 and P4.3 written (collector, offline tests, cron workflow, ml CI job); live check waits on the TomTom key.
 - **2026-11-24** (Claude Opus 5.5) P5.1 done: Google News RSS headlines with relevance filter and dedupe, 4 tests.
+- **2026-11-24** (Claude Opus 5.5) P5.2 partly done (real headlines, keyword categories, cache; Gemini summaries wait on the key). P5.3 done: cards link to real articles, badge colour bug fixed.
