@@ -21,7 +21,7 @@ const STORAGE_KEY_PREFIX = 'orion_search_history_';
 
 // Generate unique ID for search items
 const generateId = (): string => {
-    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return crypto.randomUUID();
 };
 
 // Get storage key for specific user

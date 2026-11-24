@@ -1,33 +1,25 @@
 // TrafficTimeline Component - Interactive timeline slider for traffic visualization
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import type { TimelineData, Route } from '../../services/predictionService';
-import { generateTimelineData } from '../../services/predictionService';
-import { getTrafficColor } from '../../utils/mapUtils';
+import type { TimelineData } from '../../services/predictionService';
+import { formatDuration, getTrafficColor } from '../../utils/mapUtils';
 
 interface TrafficTimelineProps {
-    route: Route | null;
+    timeline: TimelineData[]; // 2-hour slots from the server
     currentHour: number;
     onHourChange: (hour: number) => void;
     theme?: 'light' | 'dark';
 }
 
 const TrafficTimeline: React.FC<TrafficTimelineProps> = ({
-    route,
+    timeline: timelineData,
     currentHour,
     onHourChange,
     theme = 'dark',
 }) => {
-    const [timelineData, setTimelineData] = useState<TimelineData[]>([]);
     const [isDragging, setIsDragging] = useState(false);
     const timelineRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if (route) {
-            const data = generateTimelineData(route);
-            setTimelineData(data);
-        }
-    }, [route]);
+    const selected = Math.min(timelineData.length - 1, Math.floor(currentHour / 2));
 
     const handleMouseDown = () => {
         setIsDragging(true);
@@ -64,7 +56,7 @@ const TrafficTimeline: React.FC<TrafficTimelineProps> = ({
         };
     }, []);
 
-    if (!route || timelineData.length === 0) return null;
+    if (timelineData.length === 0) return null;
 
     const formatHour = (hour: number) => {
         const period = hour >= 12 ? 'PM' : 'AM';
@@ -100,7 +92,7 @@ const TrafficTimeline: React.FC<TrafficTimelineProps> = ({
                         Traffic Timeline
                     </h3>
                     <p style={{ fontSize: '0.7rem', color: theme === 'dark' ? '#a0a0a0' : '#666', margin: 0 }}>
-                        Drag to explore patterns
+                        Typical travel time by departure hour
                     </p>
                 </div>
                 <div
@@ -110,7 +102,7 @@ const TrafficTimeline: React.FC<TrafficTimelineProps> = ({
                         color: '#3b82f6',
                     }}
                 >
-                    {formatHour(currentHour)}
+                    {formatHour(currentHour)} · {formatDuration(timelineData[selected].durationMin)}
                 </div>
             </div>
 
@@ -136,13 +128,13 @@ const TrafficTimeline: React.FC<TrafficTimelineProps> = ({
                             style={{
                                 flex: 1,
                                 background: getTrafficColor(data.congestionLevel),
-                                opacity: index === currentHour ? 1 : 0.6,
+                                opacity: index === selected ? 1 : 0.6,
                                 transition: 'opacity 0.3s ease',
                                 position: 'relative',
                             }}
-                            title={`${formatHour(data.hour)}: ${Math.round(data.congestionLevel)}% congestion`}
+                            title={`${formatHour(data.hour)}: ${formatDuration(data.durationMin)} at ${Math.round(data.avgSpeed)} km/h`}
                         >
-                            {index === currentHour && (
+                            {index === selected && (
                                 <div
                                     style={{
                                         position: 'absolute',

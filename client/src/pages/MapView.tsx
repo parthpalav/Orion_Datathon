@@ -15,11 +15,7 @@ import type {
     TrafficPrediction,
     Route,
 } from '../services/predictionService';
-import {
-    predictTraffic,
-    getRouteAtTime,
-    generateDynamicInsights,
-} from '../services/predictionService';
+import { predictTraffic, insightsFor } from '../services/predictionService';
 import { saveSearch } from '../services/searchHistoryService';
 import type { SearchHistoryItem } from '../services/searchHistoryService';
 
@@ -79,41 +75,8 @@ const MapView: React.FC = () => {
         }
     };
 
-    const handleHourChange = async (hour: number) => {
-        setCurrentHour(hour);
-
-        // Update route based on new hour if we have prediction data
-        if (prediction && sourceLocation && destinationLocation) {
-            const source: Location = {
-                name: 'Source',
-                coordinates: sourceLocation,
-            };
-            const destination: Location = {
-                name: 'Destination',
-                coordinates: destinationLocation,
-            };
-
-            const newRoute = await getRouteAtTime(source, destination, hour, selectedRouteType);
-            setCurrentRoute(newRoute);
-            
-            // Update dynamic insights with the new route
-            if (prediction) {
-                const dynamicInsights = generateDynamicInsights(
-                    newRoute, 
-                    hour, 
-                    selectedRouteType === 'best' ? newRoute : prediction.bestRoute,
-                    selectedRouteType === 'fuel-efficient' ? newRoute : prediction.fuelEfficientRoute
-                );
-                
-                setDynamicPrediction({
-                    ...prediction,
-                    bestRoute: selectedRouteType === 'best' ? newRoute : prediction.bestRoute,
-                    fuelEfficientRoute: selectedRouteType === 'fuel-efficient' ? newRoute : prediction.fuelEfficientRoute,
-                    insights: dynamicInsights,
-                });
-            }
-        }
-    };
+    // The timeline is precomputed by the server, so scrubbing only moves the marker: no network calls.
+    const handleHourChange = (hour: number) => setCurrentHour(hour);
 
     const handleRouteTypeChange = (type: 'best' | 'fuel-efficient') => {
         setSelectedRouteType(type);
@@ -122,18 +85,7 @@ const MapView: React.FC = () => {
             const route = type === 'best' ? prediction.bestRoute : prediction.fuelEfficientRoute;
             setCurrentRoute(route);
             
-            // Update dynamic insights for the selected route type
-            const dynamicInsights = generateDynamicInsights(
-                route, 
-                currentHour, 
-                prediction.bestRoute,
-                prediction.fuelEfficientRoute
-            );
-            
-            setDynamicPrediction({
-                ...prediction,
-                insights: dynamicInsights,
-            });
+            setDynamicPrediction({ ...prediction, insights: insightsFor(route, prediction) });
         }
     };
 
@@ -418,16 +370,17 @@ const MapView: React.FC = () => {
                     <div style={{ pointerEvents: 'auto' }}>
                         <InsightsPanel
                             prediction={dynamicPrediction}
+                            route={currentRoute}
                             theme={theme}
                         />
                     </div>
                 )}
 
                 {/* Traffic Timeline */}
-                {currentRoute && (
+                {prediction && (
                     <div style={{ pointerEvents: 'auto' }}>
                         <TrafficTimeline
-                            route={currentRoute}
+                            timeline={prediction.timeline}
                             currentHour={currentHour}
                             onHourChange={handleHourChange}
                             theme={theme}

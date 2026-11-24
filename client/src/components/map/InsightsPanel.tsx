@@ -1,17 +1,19 @@
 // InsightsPanel Component - AI-powered insights dashboard
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import type { TrafficPrediction } from '../../services/predictionService';
+import type { Route, TrafficPrediction } from '../../services/predictionService';
 import { formatDuration, formatDistance } from '../../utils/mapUtils';
 import { animateInsightCards } from '../../utils/animationUtils';
 
 interface InsightsPanelProps {
     prediction: TrafficPrediction | null;
+    route: Route | null; // the route currently shown on the map
     theme?: 'light' | 'dark';
 }
 
 const InsightsPanel: React.FC<InsightsPanelProps> = ({
     prediction,
+    route,
     theme = 'dark',
 }) => {
     const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
@@ -23,9 +25,9 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({
         }
     }, [prediction]);
 
-    if (!prediction) return null;
+    if (!prediction || !route) return null;
 
-    const { insights, confidence, bestRoute } = prediction;
+    const { insights } = prediction;
 
     const getCongestionColor = (level: string) => {
         switch (level) {
@@ -80,43 +82,15 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({
                         marginBottom: '0.5rem',
                     }}
                 >
-                    AI Insights
+                    Route Insights
                 </h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div
-                        style={{
-                            flex: 1,
-                            height: '6px',
-                            background: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-                            borderRadius: '3px',
-                            overflow: 'hidden',
-                        }}
-                    >
-                        <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${confidence}%` }}
-                            transition={{ duration: 1, ease: 'easeOut' }}
-                            style={{
-                                height: '100%',
-                                background: 'linear-gradient(90deg, #0ea5e9, #3b82f6, #6366f1)',
-                                borderRadius: '3px',
-                            }}
-                        />
-                    </div>
-                    <span
-                        style={{
-                            fontSize: '0.875rem',
-                            fontWeight: 600,
-                            color: '#3b82f6',
-                        }}
-                    >
-                        {Math.round(confidence)}% Confidence
-                    </span>
+                <div style={{ fontSize: '0.75rem', color: theme === 'dark' ? '#a0a0a0' : '#666' }}>
+                    {prediction.live ? 'Live traffic from Mapbox' : 'Mapbox typical traffic for your departure time'}
                 </div>
             </div>
 
             {/* Optimal Date Card - Only show when date range was used */}
-            {prediction.usedDateRange && (
+            {prediction.usedDateRange && prediction.optimalDate && (
                 <div
                     style={{
                         ...cardStyle,
@@ -137,7 +111,7 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({
                         {prediction.optimalDate}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: theme === 'dark' ? '#a0a0a0' : '#666' }}>
-                        Best day for your journey
+                        Fastest day in your range at this time
                     </div>
                 </div>
             )}
@@ -160,7 +134,7 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({
                     {formatDuration(insights.estimatedTime)}
                 </div>
                 <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#a0a0a0' : '#666', marginTop: '0.5rem' }}>
-                    {formatDistance(bestRoute.totalDistance)}
+                    {formatDistance(route.totalDistance)}
                 </div>
             </div>
 
@@ -174,15 +148,16 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({
             >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                     <span style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#a0a0a0' : '#666', fontWeight: 600 }}>
-                        FUEL SAVINGS
+                        FUEL &amp; CO₂
                     </span>
                     <span style={{ fontSize: '1.5rem' }}>⛽</span>
                 </div>
                 <div style={{ fontSize: '2rem', fontWeight: 700, color: '#10b981' }}>
-                    {insights.fuelSavings}%
+                    {route.fuelLitres.toFixed(2)} L
                 </div>
                 <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#a0a0a0' : '#666', marginTop: '0.5rem' }}>
-                    vs. standard route
+                    ≈ {route.co2Kg.toFixed(1)} kg CO₂
+                    {insights.fuelSavedLitres >= 0.01 && ` · fuel-efficient route saves ${insights.fuelSavedLitres.toFixed(2)} L`}
                 </div>
             </div>
 
@@ -233,11 +208,12 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({
                     {prediction.optimalDepartureTime}
                 </div>
                 <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#a0a0a0' : '#666', marginTop: '0.5rem' }}>
-                    Best time to depart
+                    Fastest 2-hour slot that day
                 </div>
             </div>
 
             {/* Peak Hours Card */}
+            {prediction.peakHours.length > 0 && (
             <div
                 ref={(el) => { cardsRef.current[4] = el; }}
                 style={{
@@ -253,7 +229,7 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({
                     <span style={{ fontSize: '1.5rem' }}>⚠️</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {insights.peakHours.map((hour, index) => (
+                    {prediction.peakHours.map((hour, index) => (
                         <div
                             key={index}
                             style={{
@@ -270,6 +246,7 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({
                     ))}
                 </div>
             </div>
+            )}
         </motion.div>
     );
 };
