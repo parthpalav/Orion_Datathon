@@ -281,3 +281,4 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** (Claude Opus 5.5) Deployed client and API to Vercel (project `orion`); attached orionmaps.xyz pending DNS.
 - **2026-11-24** (Claude Opus 5.5) Removed Google sign-in everywhere; verified email signup, login and `/me` locally and on Vercel.
 - **2026-11-24** (Claude Opus 5.5) Rewrote README as a usage guide with screenshots and GIFs (docs/media), set the GitHub description, homepage and topics.
+- **2026-11-24** (Claude Opus 5.5) Re-recorded the README route demo with Sion to Marine Drive, where the fastest and fuel-efficient routes take different roads.

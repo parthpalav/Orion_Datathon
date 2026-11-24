@@ -13,7 +13,7 @@
 ![Mapbox](https://img.shields.io/badge/Mapbox_GL-000000?logo=mapbox&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Deployed_on_Vercel-000000?logo=vercel&logoColor=white)
 
-![Planning a trip from Andheri to BKC](docs/media/demo-plan-route.gif)
+![Planning a trip from Sion to Marine Drive, then switching to the fuel-efficient route](docs/media/demo-plan-route.gif)
 
 </div>
 
@@ -50,13 +50,17 @@ Open the [live app](https://orion-xi-lac.vercel.app), click **Sign up**, and fil
 
 ### 2. Plan a trip
 
-Open **Traffic Map**. Type a place in **Source location** and **Destination** (for example "Andheri station" and "Bandra Kurla Complex") and pick a suggestion. Choose a departure date and time, then press **Predict Traffic**.
+Open **Traffic Map**. Type a place in **Source location** and **Destination** (for example "Sion" and "Marine Drive") and pick a suggestion. Choose a departure date and time, then press **Predict Traffic**.
 
 The route appears on the map, coloured by congestion, with the estimated time, distance, fuel and CO₂ on the right.
 
-![Route result](docs/media/03-route-plan.jpg)
+Switch between **Fastest Route** and **Fuel Efficient** at the top of the map to compare the two. They are often different roads. For Sion to Marine Drive at 6 pm on a weekday, the fastest route takes the Coastal Road along the west coast. The fuel-efficient route cuts through the middle of the city: 5 minutes slower, but 5.7 km shorter and about 14% less fuel.
 
-Switch between **Fastest Route** and **Fuel Efficient** at the top of the map to compare alternatives.
+| Fastest: 34 min, 20.5 km, 1.47 L | Fuel efficient: 39 min, 14.8 km, 1.26 L |
+|---|---|
+| ![Fastest route via the Coastal Road](docs/media/03-route-plan.jpg) | ![Fuel-efficient route through the city](docs/media/03-route-eco.jpg) |
+
+These figures are Mapbox typical-traffic estimates and change with the day and time you pick.
 
 ### 3. Find the best time to leave
 
