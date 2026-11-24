@@ -5,7 +5,7 @@ This file is the single source of truth for the rebuild. Any agent or person pic
 ## Status
 
 - **Current phase:** P1 (feasibility spike). P0 agent tasks are done.
-- **Next task:** P1.1. Needs `MAPBOX_SECRET_TOKEN` or the Mapbox public token in `server/.env`.
+- **Next task:** P1.2 (needs `TOMTOM_API_KEY` in the root `.env`). If keys are not available yet, continue with P2.
 - **Blockers:** P0.2 and P0.4 are waiting on the user. P1 needs a TomTom key and a Gemini key in `server/.env`.
 - **Last updated:** 2026-11-24
 
@@ -81,7 +81,7 @@ React (Firebase Hosting) ──▶ Express (Render free) ──▶ Mapbox Direct
 
 Scratch scripts only, outside `src/`. Record results under Decisions.
 
-- [ ] **P1.1** Mapbox `driving-traffic` on 3 Mumbai routes (Andheri→BKC, Thane→Lower Parel, Borivali→Churchgate).
+- [x] **P1.1** Mapbox `driving-traffic` on 3 Mumbai routes (Andheri→BKC, Thane→Lower Parel, Borivali→Churchgate).
   - Check that `annotations=congestion,speed,duration` come back.
   - Check that `depart_at` changes durations across hours and weekdays, and how far ahead it works.
   - Check whether `duration_typical` is present.
@@ -206,8 +206,17 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** Untracked `client/.env.development` as well as `.env.production`. `.gitignore` now ignores every `.env.*` except `.env.example`. Copy `client/.env.example` to `client/.env.development` for local dev.
 - **2026-11-24** The server now exits if MongoDB is unreachable at boot, instead of running with every auth request hanging. Render restarts it.
 - **2026-11-24** The user asked for a commit after each task, with plain-English messages (no `feat:`/`fix:` prefixes) and no pushing.
+- **2026-11-24 P1.1 result (Mapbox in Mumbai): GO, with caveats.** Tested Andheri→BKC, Thane→Lower Parel and Borivali→Churchgate on `driving-traffic`.
+  - `overview=full` is required when asking for `annotations=congestion`; `simplified` returns 422.
+  - **Use `duration_typical` for any future departure.** It gives a clean, believable daily curve. Andheri→BKC on a Tuesday: 02:00 18.7 min, 06:00 19.1, 10:00 37.0, 14:00 32.5, 18:00 36.1, 22:00 26.1. Sunday 09:30 is 23.3 vs Tuesday 37.0. Dates 30 and 60 days out still work.
+  - **Do not use `duration` for future departures.** Its curve looks shifted by about 6 hours (fastest at 08:00–10:00, slowest at 16:00–22:00), so it is probably mixing in the wrong time zone or live data. Use `duration` only for "leave now", where it matches live traffic.
+  - Per-segment `congestion` is all `unknown` for future departures. It is only present for live queries, where it shows real low/moderate/heavy values. Per-segment `speed` is always present.
+  - P3 plan: colour future routes from scaled segment speeds rather than `congestion`, and scale segment speeds so their total time matches `duration_typical` before computing fuel.
+  - `depart_at` with no offset (local time at origin) and with `+05:30` agree within about 2 minutes. Use the explicit `+05:30` form.
+  - The public `pk.` token works for Directions. The server can reuse it until a separate token is created.
 - **2026-11-24** Retire the Flask ML service. The old model trained on random synthetic San Francisco data with target leakage, so none of it is kept except the TomTom request logic.
 
 ## Session log
 
 - **2026-11-24** (Claude Opus 5.5) Audited the whole repo, wrote this plan. Done: P0.1, P0.3, P0.5, and the docs/scripts part of P2.1. Wrote the P0.4 history-purge commands.
+- **2026-11-24** (Claude Opus 5.5) P1.1 done: Mapbox works for Mumbai via `duration_typical`; details under Decisions.
