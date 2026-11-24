@@ -95,7 +95,7 @@ Scratch scripts only, outside `src/`. Record results under Decisions.
 
 ### P2: Cleanup and foundation
 
-- [ ] **P2.1** Delete dead code, stale docs and dead scripts.
+- [x] **P2.1** Delete dead code, stale docs and dead scripts.
   - Code: `client/src/pages/Map.tsx`, `client/src/pages/Intro.tsx`, `client/src/three/Globe.tsx`, the unlinked `client/src/pages/Login.tsx` and its route, the duplicate `HamburgerMenu` inside `client/src/App.tsx`, and the unused `mongodb` client dependency.
   - Docs and scripts: already deleted during P0.3 (they held secrets). Remaining in P2.1: code, the `mongodb` dependency, the `firebase.json` functions block.
   - Docs (done): `AUTHENTICATION.md`, `QUICKSTART.md`, `SETUP_SUMMARY.md`, `README_AUTH.md`, `DEPLOYMENT.md`, `FIREBASE_DEPLOYMENT.md`, `ML_INTEGRATION.md`, `RENDER_ENV_SETUP.md`, `server/AUTH_TESTING.md`.
@@ -220,3 +220,4 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 
 - **2026-11-24** (Claude Opus 5.5) Audited the whole repo, wrote this plan. Done: P0.1, P0.3, P0.5, and the docs/scripts part of P2.1. Wrote the P0.4 history-purge commands.
 - **2026-11-24** (Claude Opus 5.5) P1.1 done: Mapbox works for Mumbai via `duration_typical`; details under Decisions.
+- **2026-11-24** (Claude Opus 5.5) P2.1 done: removed dead pages, the duplicate menu, the `mongodb` client dependency and the Firebase functions block. Client build passes.

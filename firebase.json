@@ -32,12 +32,5 @@
         ]
       }
     ]
-  },
-  "functions": {
-    "source": "server",
-    "predeploy": [
-      "cd server && npm install && npm run build"
-    ],
-    "runtime": "nodejs20"
   }
 }
