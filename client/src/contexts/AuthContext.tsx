@@ -18,7 +18,6 @@ export interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName: string, phoneNumber?: string) => Promise<void>;
-  loginWithGoogle: (credential: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -95,39 +94,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const loginWithGoogle = async (credential: string) => {
-    try {
-      console.log('Attempting Google login with credential');
-      console.log('API URL:', API_URL);
-      
-      const response = await axios.post(`${API_URL}/auth/google`, { credential }, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        timeout: 10000, // 10 second timeout
-      });
-      
-      console.log('Google login response:', response.data);
-      
-      const { user: userData, token: authToken } = response.data.data;
-      
-      console.log('Google login - User data:', userData);
-      localStorage.setItem('token', authToken);
-      setToken(authToken);
-      setUser(userData);
-      
-      console.log('Google login successful');
-    } catch (error) {
-      console.error('Google login error:', error);
-      if (axios.isAxiosError(error)) {
-        console.error('Response data:', error.response?.data);
-        console.error('Response status:', error.response?.status);
-        console.error('Request config:', error.config);
-      }
-      throw new Error(getErrorMessage(error) || 'Google login failed');
-    }
-  };
-
   const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
@@ -153,7 +119,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isLoading,
     login,
     register,
-    loginWithGoogle,
     logout,
     refreshUser,
   };

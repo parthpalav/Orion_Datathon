@@ -21,8 +21,6 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
-      - key: GOOGLE_CLIENT_ID
-        sync: false
       - key: MAPBOX_TOKEN
         sync: false
       - key: GEMINI_API_KEY

@@ -13,21 +13,6 @@ import './index.css';
 // Theme type
 type Theme = 'light' | 'dark';
 
-// Extend Window type for Google Sign-In
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        id: {
-          initialize: (config: unknown) => void;
-          renderButton: (element: HTMLElement, config: unknown) => void;
-          prompt: () => void;
-        };
-      };
-    };
-  }
-}
-
 // Three.js Particle Field Component
 const ParticleField = () => {
   return (
@@ -478,9 +463,8 @@ const LoginSection = ({ theme }: { theme: Theme }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, loginWithGoogle, user } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
-  const googleButtonRef = useRef<HTMLDivElement>(null);
 
   // Debug: Log user state changes
   useEffect(() => {
@@ -490,53 +474,6 @@ const LoginSection = ({ theme }: { theme: Theme }) => {
       console.log('User email:', user?.email);
     }
   }, [user]);
-
-  // Initialize Google Sign-In
-  useEffect(() => {
-    const initGoogle = () => {
-      if (window.google) {
-        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '371636086652-mg4agd7veafvi0ppqthq7ut9b12jj0je.apps.googleusercontent.com';
-        
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: async (response: any) => {
-            try {
-              await loginWithGoogle(response.credential);
-              navigate('/mapview');
-            } catch (err) {
-              console.error('Google login failed:', err);
-              setError('Google login failed');
-            }
-          },
-        } as Parameters<typeof window.google.accounts.id.initialize>[0]);
-
-        const buttonDiv = googleButtonRef.current;
-        if (buttonDiv) {
-          window.google.accounts.id.renderButton(buttonDiv, {
-            theme: 'outline',
-            size: 'large',
-            width: 400,
-            text: 'signin_with',
-          } as Parameters<typeof window.google.accounts.id.renderButton>[1]);
-        }
-      }
-    };
-
-    // Check if Google API is already loaded
-    if (window.google) {
-      initGoogle();
-    } else {
-      // Wait for script to load
-      const checkGoogle = setInterval(() => {
-        if (window.google) {
-          clearInterval(checkGoogle);
-          initGoogle();
-        }
-      }, 100);
-
-      return () => clearInterval(checkGoogle);
-    }
-  }, [loginWithGoogle, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -880,47 +817,6 @@ const LoginSection = ({ theme }: { theme: Theme }) => {
                   {isLoading ? 'Signing In...' : 'Sign In'}
                 </motion.button>
               </form>
-
-              {/* Divider */}
-              <motion.div
-                variants={itemVariants}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  margin: '1.5rem 0',
-                }}
-              >
-                <div style={{
-                  flex: 1,
-                  height: '1px',
-                  background: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-                  transition: 'background 0.5s ease'
-                }} />
-                <span style={{
-                  padding: '0 1rem',
-                  color: '#666',
-                  fontSize: '0.875rem',
-                  transition: 'color 0.5s ease'
-                }}>OR</span>
-                <div style={{
-                  flex: 1,
-                  height: '1px',
-                  background: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-                  transition: 'background 0.5s ease'
-                }} />
-              </motion.div>
-
-              {/* Google Sign In */}
-              <motion.div
-                variants={itemVariants}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  marginBottom: '1.5rem',
-                }}
-              >
-                <div ref={googleButtonRef}></div>
-              </motion.div>
 
               {/* Sign Up Link */}
               <motion.div
