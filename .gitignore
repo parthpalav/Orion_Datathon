@@ -26,3 +26,4 @@ __pycache__/
 # Firebase local cache
 .firebase/
 .venv/
+.vercel
