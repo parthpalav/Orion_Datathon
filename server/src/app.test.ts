@@ -32,4 +32,14 @@ describe('app', () => {
     const res = await request(app).post('/api/auth/login').set('Content-Type', 'application/json').send('{bad');
     expect(res.status).toBe(400);
   });
+  it('rejects a route plan without a token', async () => {
+    const res = await request(app).post('/api/routes/plan').send({});
+    expect(res.status).toBe(401);
+  });
+
+  it('validates route plan coordinates before calling Mapbox', async () => {
+    const token = jwt.sign({ userId: 'u1' }, 'test-secret');
+    const res = await request(app).post('/api/routes/plan').set('Authorization', `Bearer ${token}`).send({ origin: 'Andheri' });
+    expect(res.status).toBe(400);
+  });
 });

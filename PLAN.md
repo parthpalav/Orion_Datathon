@@ -5,7 +5,7 @@ This file is the single source of truth for the rebuild. Any agent or person pic
 ## Status
 
 - **Current phase:** P3 (real route intelligence). P0 and P2 agent tasks are done. P1.2 and P1.3 wait on keys.
-- **Next task:** P3.3. P1.2 and P1.3 wait on keys from P0.7.
+- **Next task:** P3.4. P1.2 and P1.3 wait on keys from P0.7.
 - **Blockers:** waiting on the user for P0.2 (rotate secrets), P0.4 (purge history) and P0.7 (Gemini and TomTom keys).
 - **Last updated:** 2026-11-24
 
@@ -129,7 +129,7 @@ Scratch scripts only, outside `src/`. Record results under Decisions.
 
 - [x] **P3.1** `server/src/services/mapbox.ts`: Directions client (`driving-traffic`, alternatives, annotations, `depart_at`) with a Mongo cache keyed by rounded coordinates and departure slot (TTL 7 days).
 - [x] **P3.2** `server/src/services/fuel.ts`: per-segment fuel in litres from speed and distance, using a cited speed–consumption curve. CO₂ at 2.31 kg per litre of petrol. Unit test included.
-- [ ] **P3.3** `POST /api/routes/plan`. It returns:
+- [x] **P3.3** `POST /api/routes/plan`. It returns:
   - Up to 3 real alternatives with ETA, typical ETA, distance, per-segment congestion, fuel and CO₂.
   - "Fastest" and "most fuel-efficient" labels chosen from the real alternatives.
   - A 24h timeline sampled every 2 hours with `depart_at`, cached.
@@ -230,6 +230,7 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** Retire the Flask ML service. The old model trained on random synthetic San Francisco data with target leakage, so none of it is kept except the TomTom request logic.
 - **2026-11-24** Merged all env files into one root `.env` (and one root `.env.example`), so each secret lives in one place. The server reads it via `server/src/config/env.ts` (`../../../.env`, same from `src` and `dist`); Vite reads it via `envDir: '..'` and exposes only `VITE_*` keys. Removed `server/.env`, `client/.env`, `client/.env.development` and `client/.env.production`. The production client build sets `VITE_API_URL` on the command line (P8.2). This supersedes the earlier per-app env entries above. To rotate the DB password, edit `MONGO_URI` in the root `.env` (and in Render).
 - **2026-11-24** P3.2 fuel curve: DfT TAG data book v1.18, Table A1.3.8, petrol car (2015): L/km = a/v + b + c·v + d·v², a=0.45195, b=0.09605, c=-0.00109, d=0.000007, v clamped 10–130 km/h. Gives 6.81 L/100 km at 50 km/h, 13.1 at 10 km/h. Chosen because the planned ORNL speed table (1997 study) could not be retrieved, and TAG covers low urban speeds. It is a UK fleet curve, not an Indian one (noted in code).
+- **2026-11-24** P3.3 design: `POST /api/routes/plan` requires login (rate limit 60 per 15 min) because one plan can make ~27 Mapbox calls. Body: `origin`, `destination` as `[lng, lat]`, optional `departAt` (ISO, within 60 days), optional `dateRange` (max 14 days). A `departAt` under 5 minutes ahead is treated as "leave now" (live `duration` and Mapbox congestion labels); otherwise ETAs use `duration_typical` and segment speeds are scaled to match it. Segment congestion for future trips is speed-based with 60 km/h as free flow (an explicit assumption, in code). Timeline slots already in the past move forward by whole weeks (same weekday and hour). Consecutive segments in the same colour band are merged. Live check, Andheri to BKC tomorrow: 37.0 min at 09:00, 23.4 min at 23:00, best hour 02:00 (18.5 min), best date in a 7-day range at 09:00 was Saturday 2026-11-28 (22.6 min).
 
 ## Session log
 
@@ -243,3 +244,4 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** (Claude Opus 5.5) Merged env files into a single root `.env`; server boot, DB connect, both builds and tests verified.
 - **2026-11-24** (Claude Opus 5.5) P3.1 done: `server/src/services/mapbox.ts` with a Mongo TTL cache (5 min live, 7 days future); live check Andheri to BKC tomorrow: 37.0 min typical at 09:00, 23.4 at 23:00.
 - **2026-11-24** (Claude Opus 5.5) P3.2 done: `server/src/services/fuel.ts` (TAG A1.3.8 curve, CO₂ at 2.31 kg/L) with 4 unit tests.
+- **2026-11-24** (Claude Opus 5.5) P3.3 done: `server/src/services/routePlanner.ts` and `POST /api/routes/plan`, 6 new tests, live acceptance check passed (09:00 vs 23:00 differ).

@@ -6,6 +6,7 @@ import authRoutes from './routes/auth';
 import mlRoutes from './routes/ml';
 import chatRoutes from './routes/chat';
 import newsRoutes from './routes/news';
+import routeRoutes from './routes/routes';
 
 // Initialize Express app
 const app: Application = express();
@@ -41,7 +42,8 @@ app.get('/', (req: Request, res: Response) => {
       auth: '/api/auth',
       ml: '/api/ml',
       chat: '/api/chat',
-      news: '/api/news'
+      news: '/api/news',
+      routes: '/api/routes'
     }
   });
 });
@@ -59,6 +61,8 @@ app.use('/api/auth', limiter(30), authRoutes);
 app.use('/api/ml', mlRoutes);
 app.use('/api/news', limiter(60), requireAuth, newsRoutes);
 app.use('/api/chat', limiter(40), requireAuth, chatRoutes);
+// Each plan makes up to ~27 Mapbox calls (main + 12 timeline slots + up to 14 dates), mostly cached.
+app.use('/api/routes', limiter(60), requireAuth, routeRoutes);
 
 // Last-resort handler: log the real error, return a generic message.
 app.use((err: Error & { status?: number; type?: string }, _req: Request, res: Response, _next: NextFunction) => {
