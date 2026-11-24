@@ -5,7 +5,7 @@ This file is the single source of truth for the rebuild. Any agent or person pic
 ## Status
 
 - **Current phase:** P4 (data collection). P0, P2 and P3 agent tasks are done. P1.2 and P1.3 wait on keys.
-- **Next task:** P4.4 (no keys needed), then P4.2 and P4.3, which need `TOMTOM_API_KEY` (P0.7) to test. P1.2 and P1.3 wait on keys from P0.7.
+- **Next task:** P4.2 and P4.3 (code can be written now; a live run needs `TOMTOM_API_KEY` from P0.7). P5.1 needs no key. P1.2 and P1.3 wait on keys from P0.7.
 - **Blockers:** waiting on the user for P0.2 (rotate secrets), P0.4 (purge history) and P0.7 (Gemini and TomTom keys).
 - **Last updated:** 2026-11-24
 
@@ -156,7 +156,7 @@ Scratch scripts only, outside `src/`. Record results under Decisions.
   - GitHub disables scheduled workflows after 60 days without repo activity.
   - Private repos get 2,000 free Actions minutes per month. One run is about 1 minute, so 1,440 runs per month fits.
   - Accept: after 24 hours, `traffic_samples` holds about 48 samples per point.
-- [ ] **P4.4** Delete `ml-service/` and `server/src/routes/ml.ts` once P3 no longer depends on them.
+- [x] **P4.4** Delete `ml-service/` and `server/src/routes/ml.ts` once P3 no longer depends on them.
 
 ### P5: Real news
 
@@ -234,6 +234,7 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** P3.4: the timeline shows the server's 12 two-hour slots (fastest alternative's typical ETA per slot). Dragging it only moves the marker and shows that slot's ETA; the route on the map stays the one for the chosen departure. Removed the confidence score (no real source) and renamed "AI Insights" to "Route Insights" with a line naming the data source. Peak hours are now the slowest quarter of the day's slots, merged into windows. The fuel card shows litres and CO₂ for the shown route, plus litres saved by the fuel-efficient route. The insights panel now takes the shown route, which also fixes the wrong-distance bug from P3.5. Search history IDs use `crypto.randomUUID()` instead of `Math.random`.
 - **2026-11-24** P3.5: the map draws one glow layer plus one data-driven congestion layer on top (no more blue line hiding the colours), and redraws after a theme change (`style.load`). The map now opens on Mumbai instead of New York. Replaced invented marketing claims ("40% faster deliveries", "95% accuracy", "neural networks trained on billions of data points", "our AI analyzes real-time data") with what the app actually does. Page title set. Search history refreshes after each save. Browser check on localhost (throwaway account, deleted afterwards): Andheri to BKC at 09:00 on 2026-11-25 showed 33 min, 10.5 km, 1.02 L, congestion High, best slot 02:00, peaks 10:00-20:00; route survived a theme switch; history updated. Pre-existing layout bugs left for later: the history panel overlaps the search form (now closed by default and after picking an item), and the hamburger menu button sits under the map page header. `News.tsx` still says "Real-time updates"; P5.3 rewrites that page.
 - **2026-11-24** P4.1: `ml/corridors.json` has 11 corridors and 39 points (WEH, EEH, S V Road, LBS Marg, Sion-Panvel, Sea Link, JVLR, SCLR, Andheri-Kurla Road, Ghodbunder Road, Coastal Road). Hand-picked coordinates mostly missed the roads, so points were placed evenly along each road's own steps in a Mapbox Directions route, then checked with Mapbox Tilequery (all within 1 m of the named road or one of its flyovers). Four points that landed on a different road were dropped. Budget: 39 points every 30 min is 1,872 TomTom calls a day, under the 2,500 free limit.
+- **2026-11-24** P4.4: removed the Flask `ml-service/` (tracked files), `server/src/routes/ml.ts`, `pyrightconfig.json` (pointed at the old venv), the server's `axios` dependency (only the ML proxy used it), and the `ML_SERVICE_URL` and `VITE_API_BASE_URL` env keys. An untracked, gitignored `ml-service/ml-service.log` is still on disk; delete the folder by hand.
 
 ## Session log
 
@@ -251,3 +252,4 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** (Claude Opus 5.5) P3.4 done: `predictionService.ts` is a thin client of `/api/routes/plan` (546 lines down to ~170), 3 new client tests, Math.random grep clean.
 - **2026-11-24** (Claude Opus 5.5) P3.5 done; phase P3 complete. Verified in the browser on localhost.
 - **2026-11-24** (Claude Opus 5.5) P4.1 done: 11 Mumbai corridors, 39 road-verified sample points.
+- **2026-11-24** (Claude Opus 5.5) P4.4 done: Flask ML service and its proxy removed; server tests pass.

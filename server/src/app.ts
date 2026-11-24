@@ -3,7 +3,6 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { requireAuth } from './middleware/auth';
 import authRoutes from './routes/auth';
-import mlRoutes from './routes/ml';
 import chatRoutes from './routes/chat';
 import newsRoutes from './routes/news';
 import routeRoutes from './routes/routes';
@@ -34,13 +33,12 @@ const limiter = (limit: number) =>
 // Routes
 app.get('/', (req: Request, res: Response) => {
   res.json({
-    message: 'BigD API Server',
+    message: 'ORION API Server',
     status: 'running',
     timestamp: new Date().toISOString(),
     endpoints: {
       health: '/health',
       auth: '/api/auth',
-      ml: '/api/ml',
       chat: '/api/chat',
       news: '/api/news',
       routes: '/api/routes'
@@ -58,7 +56,6 @@ app.get('/health', (req: Request, res: Response) => {
 
 // API Routes
 app.use('/api/auth', limiter(30), authRoutes);
-app.use('/api/ml', mlRoutes);
 app.use('/api/news', limiter(60), requireAuth, newsRoutes);
 app.use('/api/chat', limiter(40), requireAuth, chatRoutes);
 // Each plan makes up to ~27 Mapbox calls (main + 12 timeline slots + up to 14 dates), mostly cached.
