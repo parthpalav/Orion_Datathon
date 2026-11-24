@@ -5,7 +5,7 @@ This file is the single source of truth for the rebuild. Any agent or person pic
 ## Status
 
 - **Current phase:** P4 (data collection). P0, P2 and P3 agent tasks are done. P1.2 and P1.3 wait on keys.
-- **Next task:** P4.2 and P4.3 (code can be written now; a live run needs `TOMTOM_API_KEY` from P0.7). P5.1 needs no key. P1.2 and P1.3 wait on keys from P0.7.
+- **Next task:** P5.1 (no key needed). P4.2 and P4.3 are written and wait on `TOMTOM_API_KEY` plus GitHub secrets for their live check. P1.2 and P1.3 wait on keys from P0.7.
 - **Blockers:** waiting on the user for P0.2 (rotate secrets), P0.4 (purge history) and P0.7 (Gemini and TomTom keys).
 - **Last updated:** 2026-11-24
 
@@ -152,10 +152,12 @@ Scratch scripts only, outside `src/`. Record results under Decisions.
 - [x] **P4.1** Define 8–12 Mumbai corridors with 3–5 sample points each in `ml/corridors.json`. Candidates: WEH, EEH, SV Road, LBS Marg, Sion–Panvel, Bandra–Worli Sea Link, JVLR, SCLR.
 - [ ] **P4.2** `ml/collect.py`: fetch TomTom `flowSegmentData` for every point and insert into Mongo `traffic_samples` as `{point_id, corridor, ts, current_speed, free_flow_speed, confidence, road_closure}`.
   - Budget: about 50 points every 30 minutes is about 2,400 requests per day. TomTom's free tier allows 2,500.
+  - Status 2026-11-24: code and offline tests written (`ml/test_collect.py`, also run in CI). Mongo writes checked. Not ticked until one live run with `TOMTOM_API_KEY` stores samples. Local run: `python3 -m venv ml/.venv && ml/.venv/bin/pip install -r ml/requirements.txt && ml/.venv/bin/python ml/collect.py`.
 - [ ] **P4.3** `.github/workflows/collect.yml` on a `*/30` cron, with repo secrets `TOMTOM_API_KEY` and `MONGO_URI`.
   - GitHub disables scheduled workflows after 60 days without repo activity.
   - Private repos get 2,000 free Actions minutes per month. One run is about 1 minute, so 1,440 runs per month fits.
   - Accept: after 24 hours, `traffic_samples` holds about 48 samples per point.
+  - Status 2026-11-24: workflow written. **USER:** add repo secrets `TOMTOM_API_KEY` and `MONGO_URI` (GitHub, Settings, Secrets and variables, Actions), push, then run "Collect traffic samples" once by hand from the Actions tab. Scheduled runs only start from the default branch on GitHub.
 - [x] **P4.4** Delete `ml-service/` and `server/src/routes/ml.ts` once P3 no longer depends on them.
 
 ### P5: Real news
@@ -253,3 +255,4 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** (Claude Opus 5.5) P3.5 done; phase P3 complete. Verified in the browser on localhost.
 - **2026-11-24** (Claude Opus 5.5) P4.1 done: 11 Mumbai corridors, 39 road-verified sample points.
 - **2026-11-24** (Claude Opus 5.5) P4.4 done: Flask ML service and its proxy removed; server tests pass.
+- **2026-11-24** (Claude Opus 5.5) P4.2 and P4.3 written (collector, offline tests, cron workflow, ml CI job); live check waits on the TomTom key.
