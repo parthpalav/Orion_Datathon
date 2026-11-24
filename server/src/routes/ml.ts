@@ -136,30 +136,5 @@ router.get('/health', async (req, res) => {
     }
 });
 
-/**
- * Retrain the ML model
- */
-router.post('/retrain', async (req, res) => {
-    try {
-        const { n_samples } = req.body;
-
-        const response = await axios.post(`${ML_SERVICE_URL}/retrain`, {
-            n_samples: n_samples || 10000
-        }, {
-            timeout: 60000 // 1 minute for training
-        });
-
-        res.json({
-            success: true,
-            data: response.data
-        });
-    } catch (error: any) {
-        console.error('Model retrain error:', error.message);
-        res.status(500).json({
-            success: false,
-            error: error.response?.data?.error || 'Failed to retrain model'
-        });
-    }
-});
 
 export default router;

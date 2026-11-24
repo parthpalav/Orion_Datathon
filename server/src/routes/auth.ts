@@ -3,6 +3,7 @@ import { body, validationResult } from 'express-validator';
 import User from '../models/User';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
+import { requireAuth, AuthedRequest } from '../middleware/auth';
 
 const router = Router();
 
@@ -120,8 +121,7 @@ const handleSignup = async (req: Request, res: Response) => {
     console.error('Signup error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error during registration',
-      error: error.message
+      message: 'Server error during registration'
     });
   }
 };
@@ -201,8 +201,7 @@ router.post('/login', loginValidation, async (req: Request, res: Response) => {
     console.error('Login error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error during login',
-      error: error.message
+      message: 'Server error during login'
     });
   }
 });
@@ -277,8 +276,7 @@ router.post('/google', async (req: Request, res: Response) => {
     console.error('Google OAuth error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error during Google authentication',
-      error: error.message
+      message: 'Server error during Google authentication'
     });
   }
 });
@@ -288,27 +286,9 @@ router.post('/google', async (req: Request, res: Response) => {
  * @desc    Get current user info (requires authentication)
  * @access  Private
  */
-router.get('/me', async (req: Request, res: Response) => {
+router.get('/me', requireAuth, async (req: AuthedRequest, res: Response) => {
   try {
-    // Extract token from header
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        message: 'No token provided'
-      });
-    }
-
-    const token = authHeader.substring(7);
-
-    // Verify token
-    const decoded: any = jwt.verify(
-      token,
-      process.env.JWT_SECRET as string
-    );
-
-    // Find user
-    const user = await User.findById(decoded.userId).select('-password');
+    const user = await User.findById(req.userId).select('-password');
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -329,10 +309,9 @@ router.get('/me', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Get user error:', error);
-    res.status(401).json({
+    res.status(500).json({
       success: false,
-      message: 'Invalid or expired token',
-      error: error.message
+      message: 'Could not load user'
     });
   }
 });
