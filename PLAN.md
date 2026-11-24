@@ -5,7 +5,7 @@ This file is the single source of truth for the rebuild. Any agent or person pic
 ## Status
 
 - **Current phase:** P4 (data collection). P0, P2 and P3 agent tasks are done. P1.2 and P1.3 wait on keys.
-- **Next task:** P5.1 (no key needed). P4.2 and P4.3 are written and wait on `TOMTOM_API_KEY` plus GitHub secrets for their live check. P1.2 and P1.3 wait on keys from P0.7.
+- **Next task:** P5.2 without the Gemini part (keyword categories and caching), then P5.3. P4.2 and P4.3 are written and wait on `TOMTOM_API_KEY` plus GitHub secrets for their live check. P1.2 and P1.3 wait on keys from P0.7.
 - **Blockers:** waiting on the user for P0.2 (rotate secrets), P0.4 (purge history) and P0.7 (Gemini and TomTom keys).
 - **Last updated:** 2026-11-24
 
@@ -162,7 +162,7 @@ Scratch scripts only, outside `src/`. Record results under Decisions.
 
 ### P5: Real news
 
-- [ ] **P5.1** `server/src/services/news.ts`: fetch Google News RSS for Mumbai traffic queries (no key needed), parse with `fast-xml-parser`, dedupe.
+- [x] **P5.1** `server/src/services/news.ts`: fetch Google News RSS for Mumbai traffic queries (no key needed), parse with `fast-xml-parser`, dedupe.
 - [ ] **P5.2** One batched Gemini call classifies each item and writes a one-line summary (JSON output). Cache in Mongo for 30 minutes. If Gemini fails, return the raw headlines. Remove the hardcoded fake articles and the false "Using cached data" message.
 - [ ] **P5.3** `client/src/pages/News.tsx`: link each card to its real article URL. Fix the badge colour precedence bug.
 - Accept: every news card opens a real article.
@@ -237,6 +237,7 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** P3.5: the map draws one glow layer plus one data-driven congestion layer on top (no more blue line hiding the colours), and redraws after a theme change (`style.load`). The map now opens on Mumbai instead of New York. Replaced invented marketing claims ("40% faster deliveries", "95% accuracy", "neural networks trained on billions of data points", "our AI analyzes real-time data") with what the app actually does. Page title set. Search history refreshes after each save. Browser check on localhost (throwaway account, deleted afterwards): Andheri to BKC at 09:00 on 2026-11-25 showed 33 min, 10.5 km, 1.02 L, congestion High, best slot 02:00, peaks 10:00-20:00; route survived a theme switch; history updated. Pre-existing layout bugs left for later: the history panel overlaps the search form (now closed by default and after picking an item), and the hamburger menu button sits under the map page header. `News.tsx` still says "Real-time updates"; P5.3 rewrites that page.
 - **2026-11-24** P4.1: `ml/corridors.json` has 11 corridors and 39 points (WEH, EEH, S V Road, LBS Marg, Sion-Panvel, Sea Link, JVLR, SCLR, Andheri-Kurla Road, Ghodbunder Road, Coastal Road). Hand-picked coordinates mostly missed the roads, so points were placed evenly along each road's own steps in a Mapbox Directions route, then checked with Mapbox Tilequery (all within 1 m of the named road or one of its flyovers). Four points that landed on a different road were dropped. Budget: 39 points every 30 min is 1,872 TomTom calls a day, under the 2,500 free limit.
 - **2026-11-24** P4.4: removed the Flask `ml-service/` (tracked files), `server/src/routes/ml.ts`, `pyrightconfig.json` (pointed at the old venv), the server's `axios` dependency (only the ML proxy used it), and the `ML_SERVICE_URL` and `VITE_API_BASE_URL` env keys. An untracked, gitignored `ml-service/ml-service.log` is still on disk; delete the folder by hand.
+- **2026-11-24** P5.1: `server/src/services/news.ts` reads Google News RSS (5 Mumbai queries, last 2 days), keeps only headlines that name a Mumbai-region place and a mobility word, dedupes, and returns the newest 30. Live run returned 30 relevant headlines (metro, bridges, a BEST bus crash on SCLR). Google's feed terms allow personal, non-commercial feed-reader use; fine for this non-commercial demo, but revisit before any commercial use.
 
 ## Session log
 
@@ -256,3 +257,4 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** (Claude Opus 5.5) P4.1 done: 11 Mumbai corridors, 39 road-verified sample points.
 - **2026-11-24** (Claude Opus 5.5) P4.4 done: Flask ML service and its proxy removed; server tests pass.
 - **2026-11-24** (Claude Opus 5.5) P4.2 and P4.3 written (collector, offline tests, cron workflow, ml CI job); live check waits on the TomTom key.
+- **2026-11-24** (Claude Opus 5.5) P5.1 done: Google News RSS headlines with relevance filter and dedupe, 4 tests.
