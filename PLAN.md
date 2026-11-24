@@ -6,7 +6,7 @@ This file is the single source of truth for the rebuild. Any agent or person pic
 
 - **Current phase:** P3 (real route intelligence). P0 and P2 agent tasks are done. P1.2 and P1.3 wait on keys.
 - **Next task:** P3.1 (it only needs Mapbox, which already works). P1.2 and P1.3 wait on keys from P0.7.
-- **Blockers:** waiting on the user for P0.2 (rotate secrets), P0.4 (purge history), P0.6 (new MongoDB cluster) and P0.7 (API keys).
+- **Blockers:** waiting on the user for P0.2 (rotate secrets), P0.4 (purge history) and P0.7 (Gemini and TomTom keys).
 - **Last updated:** 2026-11-24
 
 ## How to use this file
@@ -74,7 +74,7 @@ React (Firebase Hosting) ──▶ Express (Render free) ──▶ Mapbox Direct
 
   - After the force-push, your old local copy has diverged. Re-clone it, or run `git fetch origin && git reset --hard origin/main` in it after copying out any uncommitted work.
   - Accept: `git log -p --all | grep rc_` finds nothing.
-- [ ] **P0.6 USER** Create a new MongoDB Atlas M0 (free) cluster. The old cluster in `server/.env` no longer exists (its DNS returns NXDOMAIN), so login and signup cannot work.
+- [x] **P0.6 USER** Create a new MongoDB Atlas M0 (free) cluster. The old cluster in `server/.env` no longer exists (its DNS returns NXDOMAIN), so login and signup cannot work.
   - Create a database user, allow network access from `0.0.0.0/0` (Render and GitHub Actions have no fixed IPs), and put the connection string in `server/.env` as `MONGO_URI`.
   - Accept: `cd server && npm run dev` logs `MongoDB connected`.
 - [ ] **P0.7 USER** Get the API keys the next phases need, and put them in `server/.env`:
@@ -226,6 +226,7 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** Fixed the default ports: the server defaults to 3000 and the legacy ML proxy defaults to 5001 (where Flask actually listens). The local `server/.env` sets `PORT=3001`, matching `client/.env.development`.
 - **2026-11-24** P2.3: `/api/ml` stays unauthenticated until it is deleted in P4.4, because the current client calls it with `fetch` and no token. Removed its `/retrain` proxy (the Flask endpoint was broken). Auth errors no longer return internal error messages.
 - **2026-11-24** P2.4: split `server/src/app.ts` (Express app, importable by tests) from `server/src/index.ts` (env check, DB connect, listen). Bumped `@types/node` to 22 because vitest 5 requires it, and set `engines.node >=22`.
+- **2026-11-24** P0.6: new Atlas M0 cluster `orion` in Mumbai (AWS ap-south-1), database `orion`, user `parthspalav_db_user` (auto-created, Atlas Admin role). IP access list: the user's home IP plus `0.0.0.0/0`. Smoke test passed against it: signup, login, `/me`, and 401 on chat without a token. The test user was deleted afterwards. If the DB password is rotated, update the password inside `MONGO_URI` in `server/.env` (and in Render).
 - **2026-11-24** Retire the Flask ML service. The old model trained on random synthetic San Francisco data with target leakage, so none of it is kept except the TomTom request logic.
 
 ## Session log
@@ -236,3 +237,4 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** (Claude Opus 5.5) P2.2 done: env examples, trimmed `render.yaml`, CORS from env, env loaded before routes. Found the MongoDB cluster is gone and added P0.6 and P0.7.
 - **2026-11-24** (Claude Opus 5.5) P2.3 done: shared auth middleware, rate limits, body limits, error handler. The 401 check is verified by a test in P2.4.
 - **2026-11-24** (Claude Opus 5.5) P2.4 done: vitest in both apps (server 4 tests, client 1), GitHub Actions CI. Phase P2 complete.
+- **2026-11-24** (Claude Opus 5.5) P0.6 done with the user via the browser: new Atlas cluster, `MONGO_URI` in `server/.env`, auth smoke test passed.
