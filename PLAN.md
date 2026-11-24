@@ -5,7 +5,7 @@ This file is the single source of truth for the rebuild. Any agent or person pic
 ## Status
 
 - **Current phase:** P4 (data collection). P0, P2 and P3 agent tasks are done. P1.2 and P1.3 wait on keys.
-- **Next task:** P4.1 (corridor definitions need no keys). P4.2 and P4.3 need `TOMTOM_API_KEY` (P0.7). P1.2 and P1.3 wait on keys from P0.7.
+- **Next task:** P4.4 (no keys needed), then P4.2 and P4.3, which need `TOMTOM_API_KEY` (P0.7) to test. P1.2 and P1.3 wait on keys from P0.7.
 - **Blockers:** waiting on the user for P0.2 (rotate secrets), P0.4 (purge history) and P0.7 (Gemini and TomTom keys).
 - **Last updated:** 2026-11-24
 
@@ -149,7 +149,7 @@ Scratch scripts only, outside `src/`. Record results under Decisions.
 
 ### P4: Data collection (start early: data needs weeks to accumulate)
 
-- [ ] **P4.1** Define 8–12 Mumbai corridors with 3–5 sample points each in `ml/corridors.json`. Candidates: WEH, EEH, SV Road, LBS Marg, Sion–Panvel, Bandra–Worli Sea Link, JVLR, SCLR.
+- [x] **P4.1** Define 8–12 Mumbai corridors with 3–5 sample points each in `ml/corridors.json`. Candidates: WEH, EEH, SV Road, LBS Marg, Sion–Panvel, Bandra–Worli Sea Link, JVLR, SCLR.
 - [ ] **P4.2** `ml/collect.py`: fetch TomTom `flowSegmentData` for every point and insert into Mongo `traffic_samples` as `{point_id, corridor, ts, current_speed, free_flow_speed, confidence, road_closure}`.
   - Budget: about 50 points every 30 minutes is about 2,400 requests per day. TomTom's free tier allows 2,500.
 - [ ] **P4.3** `.github/workflows/collect.yml` on a `*/30` cron, with repo secrets `TOMTOM_API_KEY` and `MONGO_URI`.
@@ -233,6 +233,7 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** P3.3 design: `POST /api/routes/plan` requires login (rate limit 60 per 15 min) because one plan can make ~27 Mapbox calls. Body: `origin`, `destination` as `[lng, lat]`, optional `departAt` (ISO, within 60 days), optional `dateRange` (max 14 days). A `departAt` under 5 minutes ahead is treated as "leave now" (live `duration` and Mapbox congestion labels); otherwise ETAs use `duration_typical` and segment speeds are scaled to match it. Segment congestion for future trips is speed-based with 60 km/h as free flow (an explicit assumption, in code). Timeline slots already in the past move forward by whole weeks (same weekday and hour). Consecutive segments in the same colour band are merged. Live check, Andheri to BKC tomorrow: 37.0 min at 09:00, 23.4 min at 23:00, best hour 02:00 (18.5 min), best date in a 7-day range at 09:00 was Saturday 2026-11-28 (22.6 min).
 - **2026-11-24** P3.4: the timeline shows the server's 12 two-hour slots (fastest alternative's typical ETA per slot). Dragging it only moves the marker and shows that slot's ETA; the route on the map stays the one for the chosen departure. Removed the confidence score (no real source) and renamed "AI Insights" to "Route Insights" with a line naming the data source. Peak hours are now the slowest quarter of the day's slots, merged into windows. The fuel card shows litres and CO₂ for the shown route, plus litres saved by the fuel-efficient route. The insights panel now takes the shown route, which also fixes the wrong-distance bug from P3.5. Search history IDs use `crypto.randomUUID()` instead of `Math.random`.
 - **2026-11-24** P3.5: the map draws one glow layer plus one data-driven congestion layer on top (no more blue line hiding the colours), and redraws after a theme change (`style.load`). The map now opens on Mumbai instead of New York. Replaced invented marketing claims ("40% faster deliveries", "95% accuracy", "neural networks trained on billions of data points", "our AI analyzes real-time data") with what the app actually does. Page title set. Search history refreshes after each save. Browser check on localhost (throwaway account, deleted afterwards): Andheri to BKC at 09:00 on 2026-11-25 showed 33 min, 10.5 km, 1.02 L, congestion High, best slot 02:00, peaks 10:00-20:00; route survived a theme switch; history updated. Pre-existing layout bugs left for later: the history panel overlaps the search form (now closed by default and after picking an item), and the hamburger menu button sits under the map page header. `News.tsx` still says "Real-time updates"; P5.3 rewrites that page.
+- **2026-11-24** P4.1: `ml/corridors.json` has 11 corridors and 39 points (WEH, EEH, S V Road, LBS Marg, Sion-Panvel, Sea Link, JVLR, SCLR, Andheri-Kurla Road, Ghodbunder Road, Coastal Road). Hand-picked coordinates mostly missed the roads, so points were placed evenly along each road's own steps in a Mapbox Directions route, then checked with Mapbox Tilequery (all within 1 m of the named road or one of its flyovers). Four points that landed on a different road were dropped. Budget: 39 points every 30 min is 1,872 TomTom calls a day, under the 2,500 free limit.
 
 ## Session log
 
@@ -249,3 +250,4 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** (Claude Opus 5.5) P3.3 done: `server/src/services/routePlanner.ts` and `POST /api/routes/plan`, 6 new tests, live acceptance check passed (09:00 vs 23:00 differ).
 - **2026-11-24** (Claude Opus 5.5) P3.4 done: `predictionService.ts` is a thin client of `/api/routes/plan` (546 lines down to ~170), 3 new client tests, Math.random grep clean.
 - **2026-11-24** (Claude Opus 5.5) P3.5 done; phase P3 complete. Verified in the browser on localhost.
+- **2026-11-24** (Claude Opus 5.5) P4.1 done: 11 Mumbai corridors, 39 road-verified sample points.

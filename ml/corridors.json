@@ -1,0 +1,266 @@
+{
+  "about": "Mumbai corridors sampled by ml/collect.py. Points were placed evenly along each named road using Mapbox Directions steps, then checked with Mapbox Tilequery to sit within 1 m of that road (2026-11-24). Each point has lng and lat in WGS84.",
+  "corridors": [
+    {
+      "id": "weh",
+      "name": "Western Express Highway",
+      "points": [
+        {
+          "id": "weh-1",
+          "lng": 72.86342,
+          "lat": 19.2276
+        },
+        {
+          "id": "weh-2",
+          "lng": 72.86071,
+          "lat": 19.19781
+        },
+        {
+          "id": "weh-3",
+          "lng": 72.85718,
+          "lat": 19.15588
+        },
+        {
+          "id": "weh-4",
+          "lng": 72.85542,
+          "lat": 19.11769
+        },
+        {
+          "id": "weh-5",
+          "lng": 72.84628,
+          "lat": 19.0839
+        }
+      ]
+    },
+    {
+      "id": "eeh",
+      "name": "Eastern Express Highway",
+      "points": [
+        {
+          "id": "eeh-1",
+          "lng": 72.92726,
+          "lat": 19.0963
+        },
+        {
+          "id": "eeh-2",
+          "lng": 72.91752,
+          "lat": 19.07995
+        },
+        {
+          "id": "eeh-3",
+          "lng": 72.90227,
+          "lat": 19.06738
+        },
+        {
+          "id": "eeh-4",
+          "lng": 72.88741,
+          "lat": 19.05668
+        }
+      ]
+    },
+    {
+      "id": "sv-road",
+      "name": "S V Road",
+      "points": [
+        {
+          "id": "sv-road-1",
+          "lng": 72.84558,
+          "lat": 19.16842
+        },
+        {
+          "id": "sv-road-2",
+          "lng": 72.84624,
+          "lat": 19.13756
+        },
+        {
+          "id": "sv-road-3",
+          "lng": 72.84022,
+          "lat": 19.10735
+        },
+        {
+          "id": "sv-road-4",
+          "lng": 72.83766,
+          "lat": 19.07569
+        }
+      ]
+    },
+    {
+      "id": "lbs-marg",
+      "name": "LBS Marg",
+      "points": [
+        {
+          "id": "lbs-marg-1",
+          "lng": 72.93799,
+          "lat": 19.14888
+        },
+        {
+          "id": "lbs-marg-2",
+          "lng": 72.92529,
+          "lat": 19.12768
+        },
+        {
+          "id": "lbs-marg-3",
+          "lng": 72.91839,
+          "lat": 19.10021
+        },
+        {
+          "id": "lbs-marg-4",
+          "lng": 72.89252,
+          "lat": 19.08499
+        }
+      ]
+    },
+    {
+      "id": "sion-panvel",
+      "name": "Sion-Panvel Highway",
+      "points": [
+        {
+          "id": "sion-panvel-1",
+          "lng": 72.9098,
+          "lat": 19.04591
+        },
+        {
+          "id": "sion-panvel-2",
+          "lng": 72.95124,
+          "lat": 19.05646
+        },
+        {
+          "id": "sion-panvel-3",
+          "lng": 72.97904,
+          "lat": 19.06379
+        },
+        {
+          "id": "sion-panvel-4",
+          "lng": 73.03791,
+          "lat": 19.02586
+        },
+        {
+          "id": "sion-panvel-5",
+          "lng": 73.03791,
+          "lat": 19.02586
+        }
+      ]
+    },
+    {
+      "id": "sea-link",
+      "name": "Bandra-Worli Sea Link",
+      "points": [
+        {
+          "id": "sea-link-1",
+          "lng": 72.81616,
+          "lat": 19.03278
+        }
+      ]
+    },
+    {
+      "id": "jvlr",
+      "name": "Jogeshwari-Vikhroli Link Road",
+      "points": [
+        {
+          "id": "jvlr-1",
+          "lng": 72.8805,
+          "lat": 19.12953
+        },
+        {
+          "id": "jvlr-2",
+          "lng": 72.89693,
+          "lat": 19.12429
+        },
+        {
+          "id": "jvlr-3",
+          "lng": 72.91136,
+          "lat": 19.12383
+        },
+        {
+          "id": "jvlr-4",
+          "lng": 72.92506,
+          "lat": 19.1253
+        }
+      ]
+    },
+    {
+      "id": "sclr",
+      "name": "Santacruz-Chembur Link Road",
+      "points": [
+        {
+          "id": "sclr-1",
+          "lng": 72.87437,
+          "lat": 19.07607
+        },
+        {
+          "id": "sclr-2",
+          "lng": 72.87705,
+          "lat": 19.07628
+        },
+        {
+          "id": "sclr-3",
+          "lng": 72.8887,
+          "lat": 19.06765
+        }
+      ]
+    },
+    {
+      "id": "akr",
+      "name": "Andheri-Kurla Road",
+      "points": [
+        {
+          "id": "akr-1",
+          "lng": 72.8682,
+          "lat": 19.11195
+        },
+        {
+          "id": "akr-2",
+          "lng": 72.87613,
+          "lat": 19.10948
+        },
+        {
+          "id": "akr-3",
+          "lng": 72.88439,
+          "lat": 19.10697
+        }
+      ]
+    },
+    {
+      "id": "ghodbunder",
+      "name": "Ghodbunder Road",
+      "points": [
+        {
+          "id": "ghodbunder-1",
+          "lng": 72.96784,
+          "lat": 19.26411
+        },
+        {
+          "id": "ghodbunder-2",
+          "lng": 72.94357,
+          "lat": 19.28477
+        },
+        {
+          "id": "ghodbunder-3",
+          "lng": 72.91573,
+          "lat": 19.27495
+        }
+      ]
+    },
+    {
+      "id": "coastal-road",
+      "name": "Mumbai Coastal Road",
+      "points": [
+        {
+          "id": "coastal-road-1",
+          "lng": 72.81135,
+          "lat": 18.99662
+        },
+        {
+          "id": "coastal-road-2",
+          "lng": 72.80337,
+          "lat": 18.97427
+        },
+        {
+          "id": "coastal-road-3",
+          "lng": 72.81342,
+          "lat": 18.95384
+        }
+      ]
+    }
+  ]
+}
