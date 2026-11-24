@@ -5,7 +5,7 @@ This file is the single source of truth for the rebuild. Any agent or person pic
 ## Status
 
 - **Current phase:** P3 (real route intelligence). P0 and P2 agent tasks are done. P1.2 and P1.3 wait on keys.
-- **Next task:** P3.1 (it only needs Mapbox, which already works). P1.2 and P1.3 wait on keys from P0.7.
+- **Next task:** P3.2. P1.2 and P1.3 wait on keys from P0.7.
 - **Blockers:** waiting on the user for P0.2 (rotate secrets), P0.4 (purge history) and P0.7 (Gemini and TomTom keys).
 - **Last updated:** 2026-11-24
 
@@ -127,7 +127,7 @@ Scratch scripts only, outside `src/`. Record results under Decisions.
 
 ### P3: Real route intelligence (server-side)
 
-- [ ] **P3.1** `server/src/services/mapbox.ts`: Directions client (`driving-traffic`, alternatives, annotations, `depart_at`) with a Mongo cache keyed by rounded coordinates and departure slot (TTL 7 days).
+- [x] **P3.1** `server/src/services/mapbox.ts`: Directions client (`driving-traffic`, alternatives, annotations, `depart_at`) with a Mongo cache keyed by rounded coordinates and departure slot (TTL 7 days).
 - [ ] **P3.2** `server/src/services/fuel.ts`: per-segment fuel in litres from speed and distance, using a cited speed–consumption curve. CO₂ at 2.31 kg per litre of petrol. Unit test included.
 - [ ] **P3.3** `POST /api/routes/plan`. It returns:
   - Up to 3 real alternatives with ETA, typical ETA, distance, per-segment congestion, fuel and CO₂.
@@ -240,3 +240,4 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** (Claude Opus 5.5) P2.4 done: vitest in both apps (server 4 tests, client 1), GitHub Actions CI. Phase P2 complete.
 - **2026-11-24** (Claude Opus 5.5) P0.6 done with the user via the browser: new Atlas cluster, `MONGO_URI` in `server/.env`, auth smoke test passed.
 - **2026-11-24** (Claude Opus 5.5) Merged env files into a single root `.env`; server boot, DB connect, both builds and tests verified.
+- **2026-11-24** (Claude Opus 5.5) P3.1 done: `server/src/services/mapbox.ts` with a Mongo TTL cache (5 min live, 7 days future); live check Andheri to BKC tomorrow: 37.0 min typical at 09:00, 23.4 at 23:00.
