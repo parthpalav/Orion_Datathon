@@ -6,16 +6,17 @@ import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import HamburgerMenu from '../components/HamburgerMenu';
 import MapContainer from '../components/map/MapContainer';
-import InputPanel from '../components/map/InputPanel';
+import InputPanel, { type RouteRequest } from '../components/map/InputPanel';
+import { mumbaiDate, mumbaiTime } from '../utils/mumbaiTime';
+import { getErrorMessage } from '../utils/errorHandler';
 import InsightsPanel from '../components/map/InsightsPanel';
 import TrafficTimeline from '../components/map/TrafficTimeline';
 import SearchHistory from '../components/map/SearchHistory';
 import type {
     Location,
     TrafficPrediction,
-    Route,
 } from '../services/predictionService';
-import { predictTraffic, insightsFor } from '../services/predictionService';
+import { predictTraffic } from '../services/predictionService';
 import { saveSearch } from '../services/searchHistoryService';
 import type { SearchHistoryItem } from '../services/searchHistoryService';
 
@@ -24,120 +25,93 @@ const MapView: React.FC = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
 
-    const [sourceLocation, setSourceLocation] = useState<[number, number] | undefined>();
-    const [destinationLocation, setDestinationLocation] = useState<[number, number] | undefined>();
-    const [currentRoute, setCurrentRoute] = useState<Route | null>(null);
+    const [source, setSource] = useState<Location | null>(null);
+    const [destination, setDestination] = useState<Location | null>(null);
     const [prediction, setPrediction] = useState<TrafficPrediction | null>(null);
-    const [dynamicPrediction, setDynamicPrediction] = useState<TrafficPrediction | null>(null);
+    const [mileage, setMileage] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [currentHour, setCurrentHour] = useState(new Date().getHours());
+    const [error, setError] = useState('');
+    const [currentHour, setCurrentHour] = useState(() => mumbaiTime().hour);
     const [selectedRouteType, setSelectedRouteType] = useState<'best' | 'fuel-efficient'>('best');
-    // Closed by default: the history panel sits over the search form.
     const [showHistory, setShowHistory] = useState(false);
     const [historyVersion, setHistoryVersion] = useState(0);
+    const [loadedTrip, setLoadedTrip] = useState<{ trip: RouteRequest; version: number }>();
+    const [mobilePanel, setMobilePanel] = useState<'planner' | 'details' | null>('planner');
 
-    const handlePredictionSubmit = async (data: {
-        source: Location;
-        destination: Location;
-        departureTime: Date;
-        dateRange?: { start: Date; end: Date };
-    }) => {
+    const currentRoute = prediction
+        ? selectedRouteType === 'best' ? prediction.bestRoute : prediction.fuelEfficientRoute
+        : null;
+
+    const handleLocationChange = (field: 'source' | 'destination', location: Location | null) => {
+        (field === 'source' ? setSource : setDestination)(location);
+        setPrediction(null);
+        setError('');
+    };
+
+    const handlePredictionSubmit = async (trip: RouteRequest, saveToHistory = true) => {
+        if (isLoading) return;
+        const { source, destination, departureTime, dateRange, departureWindow } = trip;
         setIsLoading(true);
-        setSourceLocation(data.source.coordinates);
-        setDestinationLocation(data.destination.coordinates);
+        setPrediction(null);
+        setError('');
 
         try {
-            const result = await predictTraffic(
-                data.source,
-                data.destination,
-                data.departureTime,
-                data.dateRange
-            );
-
+            const result = await predictTraffic(source, destination, departureTime, dateRange, departureWindow);
             setPrediction(result);
-            setCurrentRoute(result.bestRoute);
-            setDynamicPrediction(result);
-            setCurrentHour(data.departureTime.getHours());
+            setSelectedRouteType('best');
+            const suggested = result.bestInWindow && new Date(result.bestInWindow.departAt);
+            setCurrentHour(mumbaiTime(result.live ? new Date() : suggested || departureTime).hour);
+            setMobilePanel(null);
 
-            // Auto-save search to history
-            if (user?.id) {
-                saveSearch(
-                    user.id,
-                    data.source,
-                    data.destination,
-                    data.departureTime,
-                    data.dateRange
-                );
+            if (saveToHistory && user?.id) {
+                saveSearch(user.id, source, destination, departureTime, dateRange, departureWindow);
                 setHistoryVersion((v) => v + 1);
             }
         } catch (error) {
-            console.error('Prediction failed:', error);
-            alert('Failed to generate traffic prediction. Please try again.');
+            setError(getErrorMessage(error));
         } finally {
             setIsLoading(false);
         }
     };
 
-    // The timeline is precomputed by the server, so scrubbing only moves the marker: no network calls.
-    const handleHourChange = (hour: number) => setCurrentHour(hour);
-
-    const handleRouteTypeChange = (type: 'best' | 'fuel-efficient') => {
-        setSelectedRouteType(type);
-
-        if (prediction) {
-            const route = type === 'best' ? prediction.bestRoute : prediction.fuelEfficientRoute;
-            setCurrentRoute(route);
-            
-            setDynamicPrediction({ ...prediction, insights: insightsFor(route, prediction) });
-        }
-    };
-
-    const handleHistoryItemClick = async (item: SearchHistoryItem) => {
-        // Reload route from history
-        setIsLoading(true);
-        setSourceLocation(item.source.coordinates);
-        setDestinationLocation(item.destination.coordinates);
-
-        try {
-            const result = await predictTraffic(
-                item.source,
-                item.destination,
-                item.departureTime,
-                item.dateRange
-            );
-
-            setPrediction(result);
-            setCurrentRoute(result.bestRoute);
-            setDynamicPrediction(result);
-            setCurrentHour(item.departureTime.getHours());
-            setSelectedRouteType('best');
-            setShowHistory(false);
-        } catch (error) {
-            console.error('Failed to reload route:', error);
-            alert('Failed to reload route. Please try again.');
-        } finally {
-            setIsLoading(false);
-        }
+    const handleHistoryItemClick = (item: SearchHistoryItem) => {
+        if (isLoading) return;
+        const now = new Date();
+        const today = mumbaiDate(mumbaiTime(now).date);
+        const dateRange = item.dateRange && item.dateRange.end >= today
+            ? { start: item.dateRange.start < today ? today : item.dateRange.start, end: item.dateRange.end }
+            : undefined;
+        const departureWindow = item.departureWindow && item.departureWindow.end > now
+            ? { start: item.departureWindow.start < now ? now : item.departureWindow.start, end: item.departureWindow.end }
+            : undefined;
+        const departureTime = departureWindow?.start ?? (dateRange
+            ? mumbaiDate(mumbaiTime(dateRange.start).date, mumbaiTime(item.departureTime).time)
+            : item.departureTime < now ? now : item.departureTime);
+        const trip = { source: item.source, destination: item.destination, departureTime, dateRange, departureWindow };
+        setSource(trip.source);
+        setDestination(trip.destination);
+        setMobilePanel('planner');
+        setLoadedTrip((previous) => ({ trip, version: (previous?.version ?? 0) + 1 }));
+        setShowHistory(false);
+        void handlePredictionSubmit(trip, false);
     };
 
     return (
         <div
+            data-map-panel={mobilePanel ?? 'none'}
             style={{
                 width: '100vw',
-                height: '100vh',
+                height: '100dvh',
                 position: 'relative',
                 overflow: 'hidden',
                 background: theme === 'dark' ? '#000' : '#fff',
                 transition: 'background 0.5s ease',
             }}
         >
-            {/* Hamburger Menu */}
-            <HamburgerMenu />
-
             {/* Map Container - Base Layer */}
             <MapContainer
-                sourceLocation={sourceLocation}
-                destinationLocation={destinationLocation}
+                source={source}
+                destination={destination}
                 route={currentRoute}
                 theme={theme}
             />
@@ -162,6 +136,7 @@ const MapView: React.FC = () => {
             >
                 {/* Left Side - User Info & Logout */}
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <HamburgerMenu style={{ position: 'relative', top: 0, left: 0 }} />
                     {/* Logo */}
                     <motion.div
                         initial={{ opacity: 0, x: -20 }}
@@ -183,7 +158,7 @@ const MapView: React.FC = () => {
                         }}>
                             ORION
                         </div>
-                        <div style={{
+                        <div className="map-view-tagline" style={{
                             fontSize: '0.75rem',
                             color: theme === 'dark' ? '#888' : '#666',
                             borderLeft: `2px solid ${theme === 'dark' ? '#333' : '#ddd'}`,
@@ -197,6 +172,7 @@ const MapView: React.FC = () => {
                     {/* User Info */}
                     {user && (
                         <motion.div
+                            className="map-view-user"
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             style={{
@@ -241,6 +217,7 @@ const MapView: React.FC = () => {
                     {user?.id && (
                         <motion.button
                             onClick={() => setShowHistory(!showHistory)}
+                            disabled={isLoading}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             style={{
@@ -269,9 +246,24 @@ const MapView: React.FC = () => {
                 </div>
             </div>
 
+            <div className="map-view-panel-controls">
+                <button type="button" aria-controls="route-planner" aria-expanded={mobilePanel === 'planner'}
+                    onClick={() => setMobilePanel(mobilePanel === 'planner' ? null : 'planner')}>Planner</button>
+                {prediction && (
+                    <button type="button" aria-controls="route-details" aria-expanded={mobilePanel === 'details'}
+                        onClick={() => setMobilePanel(mobilePanel === 'details' ? null : 'details')}>Trip details</button>
+                )}
+            </div>
+
             {/* Left Sidebar - Input Panel */}
             <InputPanel
+                key={loadedTrip?.version ?? 0}
+                source={source}
+                destination={destination}
+                onLocationChange={handleLocationChange}
                 onSubmit={handlePredictionSubmit}
+                initialTrip={loadedTrip?.trip}
+                error={error}
                 isLoading={isLoading}
                 theme={theme}
             />
@@ -279,17 +271,18 @@ const MapView: React.FC = () => {
             {/* Right Sidebar - Search History */}
             {user?.id && (
                 <SearchHistory
+                    key={`${user.id}:${historyVersion}`}
                     userId={user.id}
                     onSelectSearch={handleHistoryItemClick}
                     theme={theme}
                     isVisible={showHistory}
-                    refreshKey={historyVersion}
                 />
             )}
 
             {/* Route Type Selector - Top Center */}
             {prediction && (
                 <motion.div
+                    className="map-view-route-choices"
                     initial={{ y: -100, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -310,7 +303,8 @@ const MapView: React.FC = () => {
                     }}
                 >
                     <motion.button
-                        onClick={() => handleRouteTypeChange('best')}
+                        onClick={() => setSelectedRouteType('best')}
+                        aria-pressed={selectedRouteType === 'best'}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         style={{
@@ -330,7 +324,8 @@ const MapView: React.FC = () => {
                         Fastest Route
                     </motion.button>
                     <motion.button
-                        onClick={() => handleRouteTypeChange('fuel-efficient')}
+                        onClick={() => setSelectedRouteType('fuel-efficient')}
+                        aria-pressed={selectedRouteType === 'fuel-efficient'}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         style={{
@@ -354,6 +349,8 @@ const MapView: React.FC = () => {
 
             {/* Right Sidebar - Insights & Timeline */}
             <div
+                id="route-details"
+                className="map-view-details"
                 style={{
                     position: 'fixed',
                     top: '5rem',
@@ -370,11 +367,13 @@ const MapView: React.FC = () => {
                 }}
             >
                 {/* Insights Panel */}
-                {dynamicPrediction && (
+                {prediction && currentRoute && (
                     <div style={{ pointerEvents: 'auto' }}>
                         <InsightsPanel
-                            prediction={dynamicPrediction}
+                            prediction={prediction}
                             route={currentRoute}
+                            mileage={mileage}
+                            onMileageChange={setMileage}
                             theme={theme}
                         />
                     </div>
@@ -386,7 +385,7 @@ const MapView: React.FC = () => {
                         <TrafficTimeline
                             timeline={prediction.timeline}
                             currentHour={currentHour}
-                            onHourChange={handleHourChange}
+                            onHourChange={setCurrentHour}
                             theme={theme}
                         />
                     </div>

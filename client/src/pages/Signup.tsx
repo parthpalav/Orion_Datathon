@@ -1,12 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import Lenis from 'lenis';
+import { getCountries, getCountryCallingCode, parsePhoneNumberFromString } from 'libphonenumber-js';
+import type { CountryCode } from 'libphonenumber-js';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
 import HamburgerMenu from '../components/HamburgerMenu';
+
+const PasswordStrength = lazy(() => import('../components/PasswordStrength'));
+const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
+const phoneCountries = getCountries()
+  .map((country) => ({ country, name: regionNames.of(country) ?? country, code: getCountryCallingCode(country) }))
+  .sort((a, b) => a.name.localeCompare(b.name, 'en'));
 
 // Theme type
 type Theme = 'light' | 'dark';
@@ -63,11 +71,13 @@ const SignupPage = () => {
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>('IN');
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    country: '',
+    country: 'India',
     city: '',
     address: '',
     password: '',
@@ -130,10 +140,16 @@ const SignupPage = () => {
       return;
     }
     
+    const phone = parsePhoneNumberFromString(formData.phone, { defaultCountry: phoneCountry, extract: false });
+    if (!phone?.isPossible() || phone.ext || phone.countryCallingCode !== getCountryCallingCode(phoneCountry)) {
+      setError('Enter a valid mobile number for the selected calling code');
+      return;
+    }
+
     setIsLoading(true);
     
     try {
-      await register(formData.email, formData.password, formData.name, formData.phone || undefined);
+      await register(formData.email, formData.password, formData.name, phone.number);
       // Registration successful, navigate to map page
       navigate('/mapview');
     } catch (err) {
@@ -163,6 +179,18 @@ const SignupPage = () => {
       y: 0,
       transition: { duration: 0.5 }
     }
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    minWidth: 0,
+    padding: '0.75rem 1rem',
+    fontSize: '1rem',
+    background: theme === 'dark' ? '#1a1a1a' : '#f5f5f5',
+    border: `1px solid ${theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+    borderRadius: '0.5rem',
+    color: theme === 'dark' ? 'white' : '#1a1a1a',
+    colorScheme: theme,
   };
 
   return (
@@ -335,10 +363,11 @@ const SignupPage = () => {
                 id="name"
                 name="name"
                 type="text"
+                autoComplete="name"
                 value={formData.name}
                 onChange={handleInputChange}
                 required
-                placeholder="John Doe"
+                placeholder="Aditi Sharma"
                 style={{
                   width: '100%',
                   padding: '0.75rem 1rem',
@@ -378,10 +407,11 @@ const SignupPage = () => {
                 id="email"
                 name="email"
                 type="email"
+                autoComplete="email"
                 value={formData.email}
                 onChange={handleInputChange}
                 required
-                placeholder="john.doe@example.com"
+                placeholder="aditi.sharma@example.com"
                 style={{
                   width: '100%',
                   padding: '0.75rem 1rem',
@@ -415,32 +445,31 @@ const SignupPage = () => {
                   transition: 'color 0.5s ease',
                 }}
               >
-                Phone Number
+                Mobile Number
               </label>
-              <input
-                id="phone"
-                name="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={handleInputChange}
-                required
-                placeholder="+1 (555) 123-4567"
-                style={{
-                  width: '100%',
-                  padding: '0.75rem 1rem',
-                  fontSize: '1rem',
-                  background: theme === 'dark' ? '#1a1a1a' : '#f5f5f5',
-                  border: theme === 'dark' 
-                    ? '1px solid rgba(255, 255, 255, 0.1)'
-                    : '1px solid rgba(0, 0, 0, 0.1)',
-                  borderRadius: '0.5rem',
-                  color: theme === 'dark' ? 'white' : '#1a1a1a',
-                  transition: 'all 0.3s ease',
-                  outline: 'none',
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                onBlur={(e) => e.target.style.borderColor = theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}
-              />
+              <div style={{ display: 'grid', gridTemplateColumns: 'min(42%, 10rem) minmax(0, 1fr)', gap: '0.5rem' }}>
+                <select
+                  aria-label="Country calling code"
+                  autoComplete="tel-country-code"
+                  value={phoneCountry}
+                  onChange={(e) => setPhoneCountry(e.target.value as CountryCode)}
+                  style={{ ...inputStyle, paddingInline: '0.5rem', textOverflow: 'ellipsis' }}
+                >
+                  {phoneCountries.map(({ country, name, code }) => (
+                    <option key={country} value={country}>+{code} {name}</option>
+                  ))}
+                </select>
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel-national"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  required
+                  style={inputStyle}
+                />
+              </div>
             </motion.div>
 
             {/* Country and City - Side by Side */}
@@ -466,10 +495,11 @@ const SignupPage = () => {
                   id="country"
                   name="country"
                   type="text"
+                  autoComplete="country-name"
                   value={formData.country}
                   onChange={handleInputChange}
                   required
-                  placeholder="United States"
+                  placeholder="India"
                   style={{
                     width: '100%',
                     padding: '0.75rem 1rem',
@@ -509,10 +539,11 @@ const SignupPage = () => {
                   id="city"
                   name="city"
                   type="text"
+                  autoComplete="address-level2"
                   value={formData.city}
                   onChange={handleInputChange}
                   required
-                  placeholder="New York"
+                  placeholder="Mumbai"
                   style={{
                     width: '100%',
                     padding: '0.75rem 1rem',
@@ -547,16 +578,17 @@ const SignupPage = () => {
                   transition: 'color 0.5s ease',
                 }}
               >
-                Address
+                Flat or House Number, Building, Locality
               </label>
               <input
                 id="address"
                 name="address"
                 type="text"
+                autoComplete="street-address"
                 value={formData.address}
                 onChange={handleInputChange}
                 required
-                placeholder="123 Main Street, Apt 4B"
+                placeholder="Flat 4B, Shanti Heights, Andheri East"
                 style={{
                   width: '100%',
                   padding: '0.75rem 1rem',
@@ -592,30 +624,49 @@ const SignupPage = () => {
               >
                 Password
               </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                required
-                placeholder="••••••••"
-                style={{
-                  width: '100%',
-                  padding: '0.75rem 1rem',
-                  fontSize: '1rem',
-                  background: theme === 'dark' ? '#1a1a1a' : '#f5f5f5',
-                  border: theme === 'dark' 
-                    ? '1px solid rgba(255, 255, 255, 0.1)'
-                    : '1px solid rgba(0, 0, 0, 0.1)',
-                  borderRadius: '0.5rem',
-                  color: theme === 'dark' ? 'white' : '#1a1a1a',
-                  transition: 'all 0.3s ease',
-                  outline: 'none',
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                onBlur={(e) => e.target.style.borderColor = theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  aria-describedby={formData.password ? 'password-strength-feedback' : undefined}
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="••••••••"
+                  style={{ ...inputStyle, paddingRight: '3rem' }}
+                />
+                <button
+                  type="button"
+                  aria-controls="password"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  style={{
+                    position: 'absolute',
+                    insetBlock: 0,
+                    right: '0.25rem',
+                    width: '2.5rem',
+                    display: 'grid',
+                    placeItems: 'center',
+                    borderRadius: '0.5rem',
+                    color: theme === 'dark' ? '#a0a0a0' : '#555',
+                  }}
+                >
+                  <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z" />
+                    <circle cx="12" cy="12" r="2.5" />
+                    {showPassword && <path d="m3 3 18 18" />}
+                  </svg>
+                </button>
+              </div>
+              {formData.password && (
+                <Suspense fallback={null}>
+                  <PasswordStrength password={formData.password} name={formData.name} email={formData.email} theme={theme} />
+                </Suspense>
+              )}
             </motion.div>
 
             {/* Confirm Password Input */}
@@ -639,6 +690,7 @@ const SignupPage = () => {
                 id="confirmPassword"
                 name="confirmPassword"
                 type="password"
+                autoComplete="new-password"
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
                 required

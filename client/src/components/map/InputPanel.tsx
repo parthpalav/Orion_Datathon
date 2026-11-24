@@ -1,234 +1,134 @@
 // InputPanel Component - AI Dashboard-style input interface
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-// @ts-ignore - No types available for @mapbox/mapbox-gl-geocoder
-import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
-import mapboxgl from 'mapbox-gl';
-import type { Location } from '../../services/predictionService';
+import type { DepartureWindow, Location } from '../../services/predictionService';
+import { mumbaiDate, mumbaiTime } from '../../utils/mumbaiTime';
+import PlaceSearch from './PlaceSearch';
+
+export interface RouteRequest {
+    source: Location;
+    destination: Location;
+    departureTime: Date;
+    dateRange?: DepartureWindow;
+    departureWindow?: DepartureWindow;
+}
+
+type DepartureMode = 'time' | 'window' | 'date-range';
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 interface InputPanelProps {
-    onSubmit: (data: {
-        source: Location;
-        destination: Location;
-        departureTime: Date;
-        dateRange?: { start: Date; end: Date };
-    }) => void;
+    source: Location | null;
+    destination: Location | null;
+    onLocationChange: (field: 'source' | 'destination', location: Location | null) => void;
+    onSubmit: (data: RouteRequest) => void;
+    initialTrip?: RouteRequest;
+    error?: string;
     isLoading?: boolean;
     theme?: 'light' | 'dark';
 }
 
 const InputPanel: React.FC<InputPanelProps> = ({
+    source,
+    destination,
+    onLocationChange,
     onSubmit,
+    initialTrip,
+    error,
     isLoading = false,
     theme = 'dark',
 }) => {
-    const [source, setSource] = useState<Location | null>(null);
-    const [destination, setDestination] = useState<Location | null>(null);
-    const [departureDate, setDepartureDate] = useState<string>('');
-    const [departureTime, setDepartureTime] = useState<string>('09:00');
-    const [useDateRange, setUseDateRange] = useState(false);
-    const [dateRangeStart, setDateRangeStart] = useState<string>('');
-    const [dateRangeEnd, setDateRangeEnd] = useState<string>('');
+    const [now, setNow] = useState(() => mumbaiTime());
+    const [departureDate, setDepartureDate] = useState(() => initialTrip ? mumbaiTime(initialTrip.departureTime).date : null);
+    const [departureTime, setDepartureTime] = useState(() => initialTrip ? mumbaiTime(initialTrip.departureTime).time : null);
+    const [departureMode, setDepartureMode] = useState<DepartureMode>(() =>
+        initialTrip?.departureWindow ? 'window' : initialTrip?.dateRange ? 'date-range' : 'time',
+    );
+    const [windowStart, setWindowStart] = useState(() => initialTrip?.departureWindow ? mumbaiTime(initialTrip.departureWindow.start).time : null);
+    const [windowEnd, setWindowEnd] = useState(() => initialTrip?.departureWindow ? mumbaiTime(initialTrip.departureWindow.end).time : '');
+    const [dateRangeStart, setDateRangeStart] = useState(() => initialTrip?.dateRange ? mumbaiTime(initialTrip.dateRange.start).date : null);
+    const [dateRangeEnd, setDateRangeEnd] = useState(() => initialTrip?.dateRange ? mumbaiTime(initialTrip.dateRange.end).date : '');
+    const [formError, setFormError] = useState('');
+    const [locating, setLocating] = useState(false);
+    const mounted = useRef(false);
+    const useDateRange = departureMode === 'date-range';
+    const useWindow = departureMode === 'window';
+    const startDate = dateRangeStart ?? now.date;
+    const overnight = !!windowEnd && windowEnd < (windowStart ?? now.time);
 
-    const sourceGeocoderRef = useRef<HTMLDivElement>(null);
-    const destGeocoderRef = useRef<HTMLDivElement>(null);
-    const sourceGeocoderInstance = useRef<any>(null);
-    const destGeocoderInstance = useRef<any>(null);
-    const [userProximity, setUserProximity] = useState<[number, number] | null>(null);
-
-    // Get user's location for proximity-based suggestions
     useEffect(() => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    setUserProximity([position.coords.longitude, position.coords.latitude]);
-                },
-                (error) => {
-                    console.log('Geolocation not available:', error);
-                }
-            );
-        }
+        mounted.current = true;
+        const timer = window.setInterval(() => {
+            const current = mumbaiTime();
+            setNow((previous) => previous.date === current.date && previous.time === current.time ? previous : current);
+        }, 1000);
+        return () => {
+            mounted.current = false;
+            window.clearInterval(timer);
+        };
     }, []);
 
-    // Initialize geocoders once
-    useEffect(() => {
-        if (!sourceGeocoderRef.current || !destGeocoderRef.current) return;
-        
-        // Clear any existing instances first
-        const sourceContainer = sourceGeocoderRef.current;
-        const destContainer = destGeocoderRef.current;
-        sourceContainer.innerHTML = '';
-        destContainer.innerHTML = '';
-
-        const geocoderOptions: any = {
-            accessToken: mapboxgl.accessToken,
-            mapboxgl: mapboxgl as any,
-            countries: 'us,in,gb,ca,au',
-            types: 'place,address,poi,locality,neighborhood',
-            limit: 8,
-        };
-
-        if (userProximity) {
-            geocoderOptions.proximity = userProximity;
-        }
-
-        const sourceGeocoder = new MapboxGeocoder({
-            ...geocoderOptions,
-            placeholder: 'Enter source location...',
-        });
-
-        const destGeocoder = new MapboxGeocoder({
-            ...geocoderOptions,
-            placeholder: 'Enter destination...',
-        });
-
-        sourceGeocoder.addTo(sourceContainer);
-        destGeocoder.addTo(destContainer);
-
-        sourceGeocoder.on('result', (e: any) => {
-            setSource({
-                name: e.result.place_name,
-                coordinates: e.result.center,
-            });
-        });
-
-        destGeocoder.on('result', (e: any) => {
-            setDestination({
-                name: e.result.place_name,
-                coordinates: e.result.center,
-            });
-        });
-
-        sourceGeocoderInstance.current = sourceGeocoder;
-        destGeocoderInstance.current = destGeocoder;
-
-        return () => {
-            sourceGeocoder.clear();
-            destGeocoder.clear();
-            sourceContainer.innerHTML = '';
-            destContainer.innerHTML = '';
-        };
-    }, [userProximity]);
-
-    // Handle use current location
-    const useCurrentLocation = (type: 'source' | 'destination') => {
-        if (!userProximity) {
-            alert('Please enable location access to use this feature');
+    const locate = (field: 'source' | 'destination') => {
+        setFormError('');
+        if (!navigator.geolocation) {
+            setFormError('Current location is unavailable in this browser.');
             return;
         }
 
-        const location: Location = {
-            name: 'Current Location',
-            coordinates: userProximity,
-        };
-
-        if (type === 'source') {
-            setSource(location);
-            if (sourceGeocoderInstance.current) {
-                sourceGeocoderInstance.current.setInput('Current Location');
-            }
-        } else {
-            setDestination(location);
-            if (destGeocoderInstance.current) {
-                destGeocoderInstance.current.setInput('Current Location');
-            }
-        }
+        setLocating(true);
+        navigator.geolocation.getCurrentPosition(
+            ({ coords }) => {
+                if (!mounted.current) return;
+                onLocationChange(field, { name: 'Current location', coordinates: [coords.longitude, coords.latitude] });
+                setLocating(false);
+            },
+            () => {
+                if (!mounted.current) return;
+                setFormError('Could not get your current location. Allow location access or search for a place.');
+                setLocating(false);
+            },
+            { enableHighAccuracy: true, timeout: 10000 },
+        );
     };
 
-    const getGeocoderInputValue = (geocoder: any): string => {
-        if (!geocoder) return '';
-        if (typeof geocoder.getInput === 'function') {
-            return geocoder.getInput().trim();
-        }
-        const inputEl = (geocoder as any)._inputEl as HTMLInputElement | undefined;
-        return inputEl?.value?.trim() || '';
-    };
-
-    const geocodeQuery = async (query: string): Promise<Location | null> => {
-        if (!query || !mapboxgl.accessToken) return null;
-
-        try {
-            const response = await fetch(
-                `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?limit=1&access_token=${mapboxgl.accessToken}`
-            );
-            if (!response.ok) return null;
-
-            const data = await response.json();
-            const result = data?.features?.[0];
-            if (!result?.center) return null;
-
-            return {
-                name: result.place_name || query,
-                coordinates: result.center,
-            };
-        } catch {
-            return null;
-        }
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setFormError('');
+        if (!source || !destination) {
+            setFormError('Select a search result for the source and destination.');
+            return;
+        }
+        if (source.coordinates.every((value, i) => value === destination.coordinates[i])) {
+            setFormError('Choose different locations for the source and destination.');
+            return;
+        }
 
-        let resolvedSource = source;
-        let resolvedDestination = destination;
-
-        if (!resolvedSource) {
-            const sourceQuery = getGeocoderInputValue(sourceGeocoderInstance.current);
-            resolvedSource = await geocodeQuery(sourceQuery);
-            if (resolvedSource) {
-                setSource(resolvedSource);
+        const current = mumbaiTime();
+        const date = useDateRange ? dateRangeStart ?? current.date : departureDate ?? current.date;
+        if (useWindow) {
+            const start = mumbaiDate(date, windowStart ?? current.time);
+            const sameDayEnd = mumbaiDate(date, windowEnd);
+            if (start.getTime() === sameDayEnd.getTime()) {
+                setFormError('Choose different start and end times.');
+                return;
             }
-        }
-
-        if (!resolvedDestination) {
-            const destQuery = getGeocoderInputValue(destGeocoderInstance.current);
-            resolvedDestination = await geocodeQuery(destQuery);
-            if (resolvedDestination) {
-                setDestination(resolvedDestination);
+            const end = sameDayEnd < start ? new Date(sameDayEnd.getTime() + DAY_MS) : sameDayEnd;
+            if (end <= new Date()) {
+                setFormError('Choose an end time in the future.');
+                return;
             }
-        }
-
-        if (!resolvedSource || !resolvedDestination) {
-            alert('Please fill in all required fields');
+            onSubmit({ source, destination, departureTime: start, departureWindow: { start, end } });
             return;
         }
 
-        if (useDateRange && (!dateRangeStart || !dateRangeEnd)) {
-            alert('Please fill in the date range');
+        const when = !useDateRange && departureDate === null && departureTime === null
+            ? new Date()
+            : mumbaiDate(date, departureTime ?? current.time);
+        if (!useDateRange && when < mumbaiDate(current.date, current.time)) {
+            setFormError('Choose a departure time from now onward.');
             return;
         }
-
-        if (!useDateRange && !departureDate) {
-            alert('Please fill in the departure date');
-            return;
-        }
-
-        const [hours, minutes] = departureTime.split(':').map(Number);
-        
-        let departureDateTime: Date;
-        if (useDateRange && dateRangeStart) {
-            // Use range start date with the specified time
-            departureDateTime = new Date(dateRangeStart);
-            departureDateTime.setHours(hours, minutes);
-        } else {
-            departureDateTime = new Date(departureDate);
-            departureDateTime.setHours(hours, minutes);
-        }
-
-        const data: any = {
-            source: resolvedSource,
-            destination: resolvedDestination,
-            departureTime: departureDateTime,
-        };
-
-        if (useDateRange && dateRangeStart && dateRangeEnd) {
-            data.dateRange = {
-                start: new Date(dateRangeStart),
-                end: new Date(dateRangeEnd),
-            };
-        }
-
-        onSubmit(data);
+        const dateRange = useDateRange ? { start: mumbaiDate(date), end: mumbaiDate(dateRangeEnd) } : undefined;
+        onSubmit({ source, destination, departureTime: when, dateRange });
     };
 
     const inputStyle: React.CSSProperties = {
@@ -255,6 +155,8 @@ const InputPanel: React.FC<InputPanelProps> = ({
 
     return (
         <motion.div
+            id="route-planner"
+            className="map-view-planner"
             initial={{ x: -100, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.6, ease: 'easeOut' }}
@@ -262,8 +164,8 @@ const InputPanel: React.FC<InputPanelProps> = ({
                 position: 'absolute',
                 top: '5rem',
                 left: '2rem',
-                width: '380px',
-                maxHeight: 'calc(100vh - 4rem)',
+                width: 'min(380px, calc(100% - 4rem))',
+                maxHeight: 'calc(100% - 6rem)',
                 overflowY: 'auto',
                 background: theme === 'dark' ? 'rgba(20, 20, 20, 0.95)' : 'rgba(255, 255, 255, 0.95)',
                 backdropFilter: 'blur(20px)',
@@ -296,190 +198,236 @@ const InputPanel: React.FC<InputPanelProps> = ({
             </p>
 
             <form onSubmit={handleSubmit}>
-                {/* Source Location */}
-                <div style={{ marginBottom: '1.5rem', position: 'relative', zIndex: 100 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <label style={{ ...labelStyle, marginBottom: 0 }}>Source Location</label>
-                        <motion.button
-                            type="button"
-                            onClick={() => useCurrentLocation('source')}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            style={{
-                                padding: '0.25rem 0.5rem',
-                                fontSize: '0.7rem',
-                                fontWeight: 600,
-                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                                border: 'none',
-                                borderRadius: '0.375rem',
-                                color: 'white',
-                                cursor: 'pointer',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.05em',
-                            }}
-                        >
-                            Current
-                        </motion.button>
-                    </div>
-                    <div ref={sourceGeocoderRef} data-theme={theme} style={{ position: 'relative' }} />
-                </div>
-
-                {/* Destination Location */}
-                <div style={{ marginBottom: '1.5rem', position: 'relative', zIndex: 99 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <label style={{ ...labelStyle, marginBottom: 0 }}>Destination</label>
-                        <motion.button
-                            type="button"
-                            onClick={() => useCurrentLocation('destination')}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            style={{
-                                padding: '0.25rem 0.5rem',
-                                fontSize: '0.7rem',
-                                fontWeight: 600,
-                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                                border: 'none',
-                                borderRadius: '0.375rem',
-                                color: 'white',
-                                cursor: 'pointer',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.05em',
-                            }}
-                        >
-                            Current
-                        </motion.button>
-                    </div>
-                    <div ref={destGeocoderRef} data-theme={theme} style={{ position: 'relative' }} />
-                </div>
-
-                {/* Date Range Toggle */}
-                <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                        <input
-                            type="checkbox"
-                            checked={useDateRange}
-                            onChange={(e) => setUseDateRange(e.target.checked)}
-                            style={{ marginRight: '0.5rem', cursor: 'pointer' }}
-                        />
-                        <span style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#e5e5e5' : '#1a1a1a', fontWeight: 500 }}>
-                            Find optimal date in range
-                        </span>
-                    </label>
-                </div>
-
-                {/* Date Range Inputs */}
-                {useDateRange && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        style={{ marginBottom: '1.5rem' }}
-                    >
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label htmlFor="dateRangeStart" style={labelStyle}>
-                                Range Start Date
-                            </label>
-                            <input
-                                id="dateRangeStart"
-                                type="date"
-                                value={dateRangeStart}
-                                onChange={(e) => setDateRangeStart(e.target.value)}
-                                required={useDateRange}
-                                style={inputStyle}
-                                min={new Date().toISOString().split('T')[0]}
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="dateRangeEnd" style={labelStyle}>
-                                Range End Date
-                            </label>
-                            <input
-                                id="dateRangeEnd"
-                                type="date"
-                                value={dateRangeEnd}
-                                onChange={(e) => setDateRangeEnd(e.target.value)}
-                                required={useDateRange}
-                                style={inputStyle}
-                                min={dateRangeStart || new Date().toISOString().split('T')[0]}
-                            />
-                        </div>
-                    </motion.div>
-                )}
-
-                {/* Departure Date */}
-                {!useDateRange && (
-                    <div style={{ marginBottom: '1.5rem' }}>
-                        <label htmlFor="departureDate" style={labelStyle}>
-                            Departure Date
-                        </label>
-                        <input
-                            id="departureDate"
-                            type="date"
-                            value={departureDate}
-                            onChange={(e) => setDepartureDate(e.target.value)}
-                            required
-                            style={inputStyle}
-                            min={new Date().toISOString().split('T')[0]}
-                        />
-                    </div>
-                )}
-
-                {/* Departure Time */}
-                <div style={{ marginBottom: '1.5rem' }}>
-                    <label htmlFor="departureTime" style={labelStyle}>
-                        {useDateRange ? 'Preferred Time' : 'Departure Time'}
-                    </label>
-                    <input
-                        id="departureTime"
-                        type="time"
-                        value={departureTime}
-                        onChange={(e) => setDepartureTime(e.target.value)}
-                        required
-                        style={inputStyle}
-                    />
-                </div>
-
-                {/* Submit Button */}
-                <motion.button
-                    type="submit"
-                    disabled={isLoading}
-                    whileHover={{ scale: isLoading ? 1 : 1.02 }}
-                    whileTap={{ scale: isLoading ? 1 : 0.98 }}
-                    style={{
-                        width: '100%',
-                        padding: '1rem',
-                        fontSize: '1rem',
-                        fontWeight: 600,
-                        background: isLoading
-                            ? 'rgba(100, 100, 100, 0.5)'
-                            : 'linear-gradient(135deg, #0ea5e9 0%, #3b82f6 50%, #6366f1 100%)',
-                        border: 'none',
-                        borderRadius: '0.75rem',
-                        color: 'white',
-                        cursor: isLoading ? 'not-allowed' : 'pointer',
-                        boxShadow: isLoading ? 'none' : '0 4px 20px rgba(59, 130, 246, 0.4)',
-                        transition: 'all 0.3s ease',
-                    }}
-                >
-                    {isLoading ? (
-                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                            <motion.div
-                                animate={{ rotate: 360 }}
-                                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                <fieldset disabled={isLoading || locating} style={{ minWidth: 0 }}>
+                    {/* Source Location */}
+                    <div style={{ marginBottom: '1.5rem', position: 'relative', zIndex: 100 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <label htmlFor="source" style={{ ...labelStyle, marginBottom: 0 }}>Source Location</label>
+                            <motion.button
+                                type="button"
+                                onClick={() => locate('source')}
+                                aria-label="Use current location as source"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 style={{
-                                    width: '20px',
-                                    height: '20px',
-                                    border: '2px solid rgba(255, 255, 255, 0.3)',
-                                    borderTopColor: 'white',
-                                    borderRadius: '50%',
+                                    padding: '0.25rem 0.5rem',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 600,
+                                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                    border: 'none',
+                                    borderRadius: '0.375rem',
+                                    color: 'white',
+                                    cursor: 'pointer',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
                                 }}
-                            />
-                            Analyzing Traffic...
-                        </span>
-                    ) : (
-                        'Predict Traffic'
+                            >
+                                Current
+                            </motion.button>
+                        </div>
+                        <PlaceSearch
+                            id="source"
+                            placeholder="Search Mumbai places or coordinates"
+                            location={source}
+                            onChange={(location) => {
+                                setFormError('');
+                                onLocationChange('source', location);
+                            }}
+                        />
+                    </div>
+
+                    {/* Destination Location */}
+                    <div style={{ marginBottom: '1.5rem', position: 'relative', zIndex: 99 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <label htmlFor="destination" style={{ ...labelStyle, marginBottom: 0 }}>Destination</label>
+                            <motion.button
+                                type="button"
+                                onClick={() => locate('destination')}
+                                aria-label="Use current location as destination"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                style={{
+                                    padding: '0.25rem 0.5rem',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 600,
+                                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                    border: 'none',
+                                    borderRadius: '0.375rem',
+                                    color: 'white',
+                                    cursor: 'pointer',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                }}
+                            >
+                                Current
+                            </motion.button>
+                        </div>
+                        <PlaceSearch
+                            id="destination"
+                            placeholder="Search Mumbai places or coordinates"
+                            location={destination}
+                            onChange={(location) => {
+                                setFormError('');
+                                onLocationChange('destination', location);
+                            }}
+                        />
+                    </div>
+
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <label htmlFor="departureMode" style={labelStyle}>Departure options</label>
+                        <select
+                            id="departureMode"
+                            value={departureMode}
+                            onChange={(e) => {
+                                setDepartureMode(e.target.value as DepartureMode);
+                                setFormError('');
+                            }}
+                            style={inputStyle}
+                        >
+                            <option value="time">Specific time</option>
+                            <option value="window">Time range</option>
+                            <option value="date-range">Date range</option>
+                        </select>
+                    </div>
+
+                    {/* Date Range Inputs */}
+                    {useDateRange && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            style={{ marginBottom: '1.5rem' }}
+                        >
+                            <div style={{ marginBottom: '1rem' }}>
+                                <label htmlFor="dateRangeStart" style={labelStyle}>
+                                    Range Start Date
+                                </label>
+                                <input
+                                    id="dateRangeStart"
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setDateRangeStart(e.target.value)}
+                                    required={useDateRange}
+                                    style={inputStyle}
+                                    min={now.date}
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="dateRangeEnd" style={labelStyle}>
+                                    Range End Date
+                                </label>
+                                <input
+                                    id="dateRangeEnd"
+                                    type="date"
+                                    value={dateRangeEnd}
+                                    onChange={(e) => setDateRangeEnd(e.target.value)}
+                                    required={useDateRange}
+                                    style={inputStyle}
+                                    min={startDate}
+                                />
+                            </div>
+                        </motion.div>
                     )}
-                </motion.button>
+
+                    {/* Departure Date */}
+                    {!useDateRange && (
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <label htmlFor="departureDate" style={labelStyle}>
+                                Departure Date
+                            </label>
+                            <input
+                                id="departureDate"
+                                type="date"
+                                value={departureDate ?? now.date}
+                                onChange={(e) => setDepartureDate(e.target.value)}
+                                required
+                                style={inputStyle}
+                                min={now.date}
+                            />
+                        </div>
+                    )}
+
+                    {useWindow ? (
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
+                                <div>
+                                    <label htmlFor="windowStart" style={labelStyle}>Start time (IST)</label>
+                                    <input id="windowStart" type="time" value={windowStart ?? now.time}
+                                        onChange={(e) => setWindowStart(e.target.value)} required style={inputStyle} />
+                                </div>
+                                <div>
+                                    <label htmlFor="windowEnd" style={labelStyle}>End time (IST)</label>
+                                    <input id="windowEnd" type="time" value={windowEnd}
+                                        onChange={(e) => setWindowEnd(e.target.value)} required style={inputStyle} />
+                                </div>
+                            </div>
+                            {overnight && <p style={{ fontSize: '0.75rem', marginTop: '0.5rem' }}>The range ends the next day.</p>}
+                        </div>
+                    ) : (
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <label htmlFor="departureTime" style={labelStyle}>
+                                {useDateRange ? 'Preferred Time (IST)' : 'Departure Time (IST)'}
+                            </label>
+                            <input
+                                id="departureTime"
+                                type="time"
+                                value={departureTime ?? now.time}
+                                onChange={(e) => setDepartureTime(e.target.value)}
+                                required
+                                style={inputStyle}
+                            />
+                        </div>
+                    )}
+
+                    {(formError || error) && (
+                        <p role="alert" style={{ color: theme === 'dark' ? '#fca5a5' : '#b91c1c', fontSize: '0.875rem', marginBottom: '1rem' }}>
+                            {formError || error}
+                        </p>
+                    )}
+                    {locating && <p role="status" style={{ marginBottom: '1rem' }}>Getting your location…</p>}
+
+                    {/* Submit Button */}
+                    <motion.button
+                        type="submit"
+                        disabled={isLoading}
+                        whileHover={{ scale: isLoading ? 1 : 1.02 }}
+                        whileTap={{ scale: isLoading ? 1 : 0.98 }}
+                        style={{
+                            width: '100%',
+                            padding: '1rem',
+                            fontSize: '1rem',
+                            fontWeight: 600,
+                            background: isLoading
+                                ? 'rgba(100, 100, 100, 0.5)'
+                                : 'linear-gradient(135deg, #0ea5e9 0%, #3b82f6 50%, #6366f1 100%)',
+                            border: 'none',
+                            borderRadius: '0.75rem',
+                            color: 'white',
+                            cursor: isLoading ? 'not-allowed' : 'pointer',
+                            boxShadow: isLoading ? 'none' : '0 4px 20px rgba(59, 130, 246, 0.4)',
+                            transition: 'all 0.3s ease',
+                        }}
+                    >
+                        {isLoading ? (
+                            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                <motion.div
+                                    animate={{ rotate: 360 }}
+                                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                                    style={{
+                                        width: '20px',
+                                        height: '20px',
+                                        border: '2px solid rgba(255, 255, 255, 0.3)',
+                                        borderTopColor: 'white',
+                                        borderRadius: '50%',
+                                    }}
+                                />
+                                Analyzing Traffic...
+                            </span>
+                        ) : (
+                            'Predict Traffic'
+                        )}
+                    </motion.button>
+                </fieldset>
             </form>
 
             {/* Info */}
@@ -494,6 +442,7 @@ const InputPanel: React.FC<InputPanelProps> = ({
             >
                 <p style={{ fontSize: '0.75rem', color: theme === 'dark' ? '#a0a0a0' : '#666', margin: 0 }}>
                     💡 Travel times use Mapbox traffic data: live for "leave now", typical traffic for later departures. Fuel and CO₂ use the UK DfT speed–fuel curve.
+                    Place search uses <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={{ textDecoration: 'underline' }}>OpenStreetMap</a> data.
                 </p>
             </div>
         </motion.div>

@@ -5,6 +5,7 @@ export interface IUser extends Document {
   name: string;
   email: string;
   password: string;
+  phoneNumber?: string;
   googleId?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -36,6 +37,7 @@ const userSchema = new Schema<IUser>(
       required: [true, 'Password is required'],
       minlength: [6, 'Password must be at least 6 characters']
     },
+    phoneNumber: String,
     googleId: {
       type: String,
       sparse: true

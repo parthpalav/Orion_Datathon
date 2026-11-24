@@ -1,19 +1,25 @@
 // InsightsPanel Component - route insights from the route planner
 import React, { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { insightsFor } from '../../services/predictionService';
 import type { Route, TrafficPrediction } from '../../services/predictionService';
 import { formatDuration, formatDistance } from '../../utils/mapUtils';
 import { animateInsightCards } from '../../utils/animationUtils';
+import { mumbaiTime } from '../../utils/mumbaiTime';
 
 interface InsightsPanelProps {
     prediction: TrafficPrediction | null;
     route: Route | null; // the route currently shown on the map
+    mileage: number | null;
+    onMileageChange: (kmPerLitre: number | null) => void;
     theme?: 'light' | 'dark';
 }
 
 const InsightsPanel: React.FC<InsightsPanelProps> = ({
     prediction,
     route,
+    mileage,
+    onMileageChange,
     theme = 'dark',
 }) => {
     const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
@@ -27,7 +33,14 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({
 
     if (!prediction || !route) return null;
 
-    const { insights } = prediction;
+    const insights = insightsFor(route, prediction);
+    const { fuelReference, bestInWindow } = prediction;
+    const referenceMileage = fuelReference?.kmPerLitre;
+    const fuelScale = referenceMileage && mileage ? referenceMileage / mileage : 1;
+    const fuelSaved = insights.fuelSavedLitres * fuelScale;
+    const windowDeparture = bestInWindow && new Date(bestInWindow.departAt);
+    const minTime = bestInWindow && formatDuration(Math.round(bestInWindow.minDurationMin));
+    const maxTime = bestInWindow && formatDuration(Math.round(bestInWindow.maxDurationMin));
 
     const getCongestionColor = (level: string) => {
         switch (level) {
@@ -89,8 +102,7 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({
                 </div>
             </div>
 
-            {/* Optimal Date Card - Only show when date range was used */}
-            {prediction.usedDateRange && prediction.optimalDate && (
+            {(windowDeparture || (prediction.usedDateRange && prediction.optimalDate)) && (
                 <div
                     style={{
                         ...cardStyle,
@@ -103,15 +115,21 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({
                 >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                         <span style={{ fontSize: '0.875rem', color: '#10b981', fontWeight: 700 }}>
-                            OPTIMAL DATE
+                            {windowDeparture ? 'BEST DEPARTURE IN YOUR RANGE' : 'OPTIMAL DATE'}
                         </span>
                         <span style={{ fontSize: '1.5rem' }}>📅</span>
                     </div>
                     <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#10b981', marginBottom: '0.25rem' }}>
-                        {prediction.optimalDate}
+                        {windowDeparture ? `${mumbaiTime(windowDeparture).time} IST` : prediction.optimalDate}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: theme === 'dark' ? '#a0a0a0' : '#666' }}>
-                        Fastest day in your range at this time
+                        {windowDeparture && bestInWindow ? (
+                            <>
+                                <div>{windowDeparture.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long', month: 'short', day: 'numeric' })} · {minTime} estimated trip</div>
+                                <div>Travel-time range {minTime === maxTime ? minTime : `${minTime}–${maxTime}`}</div>
+                                <div>Departures sampled up to {bestInWindow.stepMinutes} min apart.</div>
+                            </>
+                        ) : 'Fastest day in your range at this time'}
                     </div>
                 </div>
             )}
@@ -153,12 +171,37 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({
                     <span style={{ fontSize: '1.5rem' }}>⛽</span>
                 </div>
                 <div style={{ fontSize: '2rem', fontWeight: 700, color: '#10b981' }}>
-                    {route.fuelLitres.toFixed(2)} L
+                    {(route.fuelLitres * fuelScale).toFixed(2)} L
                 </div>
                 <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#a0a0a0' : '#666', marginTop: '0.5rem' }}>
-                    ≈ {route.co2Kg.toFixed(1)} kg CO₂
-                    {insights.fuelSavedLitres >= 0.01 && ` · fuel-efficient route saves ${insights.fuelSavedLitres.toFixed(2)} L`}
+                    ≈ {(route.co2Kg * fuelScale).toFixed(1)} kg CO₂
+                    {fuelSaved >= 0.01 && ` · fuel-efficient route saves ${fuelSaved.toFixed(2)} L`}
                 </div>
+                {fuelReference && referenceMileage && (
+                    <div style={{ fontSize: '0.8rem', color: theme === 'dark' ? '#a0a0a0' : '#555', marginTop: '0.75rem' }}>
+                        <details>
+                            <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
+                                Avg. {(mileage ?? referenceMileage).toFixed(1)} km/L · {mileage === null ? 'petrol reference' : 'your mileage'}
+                            </summary>
+                            <label style={{ display: 'block', marginTop: '0.5rem' }}>
+                                Vehicle mileage (km/L)
+                                <input type="range" min="1" max="100" step="0.1"
+                                    value={Number((mileage ?? referenceMileage).toFixed(1))}
+                                    onChange={(e) => onMileageChange(e.target.valueAsNumber)}
+                                    style={{ display: 'block', width: '100%', accentColor: '#10b981' }} />
+                            </label>
+                            {mileage !== null && (
+                                <button type="button" onClick={() => onMileageChange(null)}
+                                    style={{ color: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}>
+                                    Reset to {referenceMileage.toFixed(1)} km/L
+                                </button>
+                            )}
+                        </details>
+                        <p style={{ marginTop: '0.35rem' }}>
+                            UK DfT petrol-car model at {fuelReference.speedKmh} km/h. Fuel estimates adjust for traffic speeds along the route.
+                        </p>
+                    </div>
+                )}
             </div>
 
             {/* Congestion Level Card */}
@@ -191,7 +234,7 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({
             </div>
 
             {/* Optimal Time Card */}
-            <div
+            {!bestInWindow && <div
                 ref={(el) => { cardsRef.current[3] = el; }}
                 style={{
                     ...cardStyle,
@@ -210,7 +253,7 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({
                 <div style={{ fontSize: '0.875rem', color: theme === 'dark' ? '#a0a0a0' : '#666', marginTop: '0.5rem' }}>
                     Fastest 2-hour slot that day
                 </div>
-            </div>
+            </div>}
 
             {/* Peak Hours Card */}
             {prediction.peakHours.length > 0 && (

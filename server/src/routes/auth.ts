@@ -3,6 +3,7 @@ import { body, validationResult } from 'express-validator';
 import User from '../models/User';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { requireAuth, AuthedRequest } from '../middleware/auth';
 
 const router = Router();
@@ -36,6 +37,10 @@ const signupValidation = [
     .withMessage('Password must be at least 6 characters long'),
   body('phoneNumber')
     .optional()
+    .isString()
+    .withMessage('Please enter a valid mobile number')
+    .hide()
+    .bail()
     .trim()
 ];
 
@@ -66,7 +71,7 @@ const handleSignup = async (req: Request, res: Response) => {
       });
     }
 
-    const { name, fullName, email, password } = req.body;
+    const { name, fullName, email, password, phoneNumber } = req.body;
 
     // Accept either name or fullName
     const userName = fullName || name;
@@ -76,6 +81,11 @@ const handleSignup = async (req: Request, res: Response) => {
         success: false,
         message: 'Name or fullName is required'
       });
+    }
+
+    const phone = phoneNumber ? parsePhoneNumberFromString(phoneNumber, { defaultCountry: 'IN', extract: false }) : undefined;
+    if (phoneNumber && (!phone?.isPossible() || phone.ext)) {
+      return res.status(400).json({ success: false, message: 'Please enter a valid mobile number' });
     }
 
     // Check if user already exists
@@ -91,7 +101,8 @@ const handleSignup = async (req: Request, res: Response) => {
     const user = new User({
       name: userName,
       email,
-      password
+      password,
+      phoneNumber: phone?.number,
     });
 
     await user.save();

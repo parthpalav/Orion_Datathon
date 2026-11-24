@@ -8,6 +8,23 @@ export interface Location {
     coordinates: [number, number]; // [lng, lat]
 }
 
+export interface DepartureWindow {
+    start: Date;
+    end: Date;
+}
+
+interface WindowRecommendation {
+    departAt: string;
+    minDurationMin: number;
+    maxDurationMin: number;
+    stepMinutes: number;
+}
+
+interface FuelReference {
+    kmPerLitre: number;
+    speedKmh: number;
+}
+
 export interface RouteSegment {
     coordinates: [number, number][];
     congestionLevel: number; // 0-100
@@ -50,6 +67,8 @@ export interface TrafficPrediction {
     optimalDepartureTime: string; // "HH:00"
     optimalDate: string | null; // only when a date range was given
     usedDateRange: boolean;
+    bestInWindow: WindowRecommendation | null;
+    fuelReference?: FuelReference;
     timeline: TimelineData[];
     peakHours: string[];
     insights: Insights;
@@ -74,6 +93,8 @@ interface ApiPlan {
     timeline: { hour: number; departAt: string; durationMin: number; avgSpeedKmh: number }[];
     bestDeparture: { hour: number; durationMin: number };
     bestDate: { date: string; departAt: string; durationMin: number } | null;
+    bestInWindow?: WindowRecommendation | null;
+    fuelReference?: FuelReference;
 }
 
 const pad = (h: number) => `${String(h % 24).padStart(2, '0')}:00`;
@@ -128,7 +149,7 @@ export const toPrediction = (plan: ApiPlan, usedDateRange: boolean): TrafficPred
         congestionLevel: Math.min(100, Math.round(100 * (t.durationMin / best - 1))),
     }));
     const optimalDate = plan.bestDate
-        ? new Date(`${plan.bestDate.date}T12:00:00+05:30`).toLocaleDateString('en-IN', { weekday: 'long', month: 'short', day: 'numeric' })
+        ? new Date(plan.bestDate.departAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long', month: 'short', day: 'numeric' })
         : null;
 
     return {
@@ -139,6 +160,8 @@ export const toPrediction = (plan: ApiPlan, usedDateRange: boolean): TrafficPred
         optimalDepartureTime: pad(plan.bestDeparture.hour),
         optimalDate,
         usedDateRange,
+        bestInWindow: plan.bestInWindow ?? null,
+        fuelReference: plan.fuelReference,
         timeline,
         peakHours: peakWindows(timeline),
         insights: insightsFor(bestRoute, { bestRoute, fuelEfficientRoute }),
@@ -149,14 +172,17 @@ export const predictTraffic = async (
     source: Location,
     destination: Location,
     departureTime: Date,
-    dateRange?: { start: Date; end: Date }
+    dateRange?: DepartureWindow,
+    departureWindow?: DepartureWindow,
 ): Promise<TrafficPrediction> => {
     // Auth header comes from the axios default set in AuthContext.
     const { data } = await axios.post<{ success: boolean; data: ApiPlan }>(`${API_URL}/routes/plan`, {
         origin: source.coordinates,
         destination: destination.coordinates,
-        departAt: departureTime.toISOString(),
+        departAt: departureWindow ? undefined : departureTime.toISOString(),
         dateRange: dateRange && { start: dateRange.start.toISOString(), end: dateRange.end.toISOString() },
+        departureWindow: departureWindow && { start: departureWindow.start.toISOString(), end: departureWindow.end.toISOString() },
     });
+    if (departureWindow && !data.data.bestInWindow) throw new Error('Departure-window forecasts are temporarily unavailable.');
     return toPrediction(data.data, !!dateRange);
 };

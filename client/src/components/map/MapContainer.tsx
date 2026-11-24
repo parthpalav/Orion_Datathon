@@ -1,47 +1,73 @@
 // MapContainer Component - Core Mapbox GL map display
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import type { Route } from '../../services/predictionService';
+import type { Route, Location } from '../../services/predictionService';
 import { createRouteGeoJSON, createTrafficGeoJSON, calculateBounds } from '../../utils/mapUtils';
+import { MUMBAI_CENTER } from '../../services/placeSearch';
 import '../../styles/mapbox-overrides.css';
 
 // Set Mapbox access token
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || '';
 
 interface MapContainerProps {
-    sourceLocation?: [number, number];
-    destinationLocation?: [number, number];
+    source: Location | null;
+    destination: Location | null;
     route?: Route | null;
     theme?: 'light' | 'dark';
-    onMapLoad?: (map: mapboxgl.Map) => void;
+}
+
+function addPin(map: mapboxgl.Map, location: Location | null, endpoint: string, color: string) {
+    if (!location) return;
+    const marker = new mapboxgl.Marker({ color })
+        .setLngLat(location.coordinates)
+        .setPopup(new mapboxgl.Popup({ offset: 28 }).setText(`${endpoint}: ${location.name}`))
+        .addTo(map);
+    marker.getElement().setAttribute('aria-label', `${endpoint}: ${location.name}`);
+    return () => { marker.remove(); };
+}
+
+function fitMap(map: mapboxgl.Map, coordinates: [number, number][]) {
+    const width = map.getContainer().clientWidth;
+    const height = map.getContainer().clientHeight;
+    const wide = width >= 1100;
+    map.fitBounds(calculateBounds(coordinates), {
+        padding: {
+            top: Math.min(130, height * 0.25),
+            bottom: Math.min(80, height * 0.2),
+            left: wide ? 430 : 40,
+            right: wide ? 400 : 40,
+        },
+        maxZoom: 16,
+        duration: 650,
+        retainPadding: false,
+    });
 }
 
 const MapContainer: React.FC<MapContainerProps> = ({
-    sourceLocation,
-    destinationLocation,
+    source,
+    destination,
     route,
     theme = 'dark',
-    onMapLoad,
 }) => {
     const mapContainer = useRef<HTMLDivElement>(null);
     const map = useRef<mapboxgl.Map | null>(null);
     const [mapLoaded, setMapLoaded] = useState(false);
     // Bumped after each theme change: setStyle wipes our sources and layers, so the route must be redrawn.
     const [styleVersion, setStyleVersion] = useState(0);
+    const styleLoading = useRef(false);
+    const lastFittedRoute = useRef<Route | null>(null);
+    const initialStyle = useRef(theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11');
     const appliedStyle = useRef<string | null>(null);
-    const sourceMarker = useRef<mapboxgl.Marker | null>(null);
-    const destMarker = useRef<mapboxgl.Marker | null>(null);
-    // const userLocationMarker = useRef<mapboxgl.Marker | null>(null);
-    // const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
 
     // Initialize map
     useEffect(() => {
         if (!mapContainer.current || map.current) return;
 
+        appliedStyle.current = initialStyle.current;
         map.current = new mapboxgl.Map({
             container: mapContainer.current,
-            style: theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11',
-            center: [72.8777, 19.076], // Mumbai
+            style: initialStyle.current,
+            center: MUMBAI_CENTER,
             zoom: 12,
             pitch: 45,
             bearing: 0,
@@ -66,15 +92,10 @@ const MapContainer: React.FC<MapContainerProps> = ({
         
         map.current.addControl(geolocateControl, 'top-right');
 
-        // Get user's location on map load and center map
-        map.current.on('load', () => {
-            setMapLoaded(true);
-            if (onMapLoad && map.current) {
-                onMapLoad(map.current);
-            }
-            
-            // Trigger geolocation
-            geolocateControl.trigger();
+        map.current.on('load', () => setMapLoaded(true));
+        map.current.on('style.load', () => {
+            styleLoading.current = false;
+            setStyleVersion((v) => v + 1);
         });
 
         return () => {
@@ -90,78 +111,36 @@ const MapContainer: React.FC<MapContainerProps> = ({
         if (!map.current || !mapLoaded) return;
 
         const style = theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11';
-        if (appliedStyle.current === null) {
-            appliedStyle.current = style; // the map was created with this style
-            return;
-        }
         if (appliedStyle.current === style) return;
         appliedStyle.current = style;
-        map.current.once('style.load', () => setStyleVersion((v) => v + 1));
-        map.current.setStyle(style);
+        styleLoading.current = true;
+        map.current.setStyle(style, { diff: false, localFontFamily: null, localIdeographFontFamily: 'sans-serif' });
     }, [theme, mapLoaded]);
 
-    // Add source marker
     useEffect(() => {
-        if (!map.current || !mapLoaded || !sourceLocation) return;
+        const m = map.current;
+        if (!m || !mapLoaded) return;
+        return addPin(m, source, 'Source', '#059669');
+    }, [source, mapLoaded]);
 
-        // Remove existing marker
-        if (sourceMarker.current) {
-            sourceMarker.current.remove();
-        }
-
-        // Create custom marker element
-        const el = document.createElement('div');
-        el.className = 'custom-marker marker-source';
-        el.innerHTML = '📍';
-
-        sourceMarker.current = new mapboxgl.Marker(el)
-            .setLngLat(sourceLocation)
-            .setPopup(
-                new mapboxgl.Popup({ offset: 25 })
-                    .setHTML('<h3 style="margin: 0 0 8px 0; font-weight: 600;">Source Location</h3>')
-            )
-            .addTo(map.current);
-
-        return () => {
-            if (sourceMarker.current) {
-                sourceMarker.current.remove();
-            }
-        };
-    }, [sourceLocation, mapLoaded]);
-
-    // Add destination marker
     useEffect(() => {
-        if (!map.current || !mapLoaded || !destinationLocation) return;
+        const m = map.current;
+        if (!m || !mapLoaded) return;
+        return addPin(m, destination, 'Destination', '#dc2626');
+    }, [destination, mapLoaded]);
 
-        // Remove existing marker
-        if (destMarker.current) {
-            destMarker.current.remove();
-        }
-
-        // Create custom marker element
-        const el = document.createElement('div');
-        el.className = 'custom-marker marker-destination';
-        el.innerHTML = '🎯';
-
-        destMarker.current = new mapboxgl.Marker(el)
-            .setLngLat(destinationLocation)
-            .setPopup(
-                new mapboxgl.Popup({ offset: 25 })
-                    .setHTML('<h3 style="margin: 0 0 8px 0; font-weight: 600;">Destination</h3>')
-            )
-            .addTo(map.current);
-
-        return () => {
-            if (destMarker.current) {
-                destMarker.current.remove();
-            }
-        };
-    }, [destinationLocation, mapLoaded]);
+    useEffect(() => {
+        const m = map.current;
+        if (!m || !mapLoaded || route) return;
+        lastFittedRoute.current = null;
+        const points = [source, destination].flatMap((place) => place ? [place.coordinates] : []);
+        if (points.length) fitMap(m, points);
+    }, [source, destination, mapLoaded, route]);
 
     // Render route: a soft glow underneath, then the per-segment congestion colours on top.
     useEffect(() => {
         const m = map.current;
-        if (!m || !mapLoaded || !route) return;
+        if (!m || !mapLoaded || styleLoading.current || !route) return;
 
         const allCoordinates = route.segments.flatMap((segment) => segment.coordinates);
         if (allCoordinates.length === 0) return;
@@ -195,18 +174,15 @@ const MapContainer: React.FC<MapContainerProps> = ({
             paint: { 'line-color': ['get', 'color'], 'line-width': 6 },
         });
 
-        if (styleVersion === 0 || !m.getBounds()?.contains(allCoordinates[0])) {
-            m.fitBounds(calculateBounds(allCoordinates), {
-                padding: { top: 100, bottom: 100, left: 400, right: 100 },
-                duration: 1500,
-                essential: true,
-            });
+        if (lastFittedRoute.current !== route) {
+            fitMap(m, [...allCoordinates, ...[source, destination].flatMap((place) => place ? [place.coordinates] : [])]);
+            lastFittedRoute.current = route;
         }
 
         return () => {
-            if (map.current) clear();
+            if (map.current === m) clear();
         };
-    }, [route, mapLoaded, styleVersion]);
+    }, [route, source, destination, mapLoaded, styleVersion]);
 
     return (
         <div

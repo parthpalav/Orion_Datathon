@@ -1,5 +1,5 @@
 // Search History Service - Manages user search history with localStorage persistence
-import type { Location } from './predictionService';
+import type { DepartureWindow, Location } from './predictionService';
 
 export interface SearchHistoryItem {
     id: string;
@@ -7,7 +7,8 @@ export interface SearchHistoryItem {
     source: Location;
     destination: Location;
     departureTime: Date;
-    dateRange?: { start: Date; end: Date };
+    dateRange?: DepartureWindow;
+    departureWindow?: DepartureWindow;
     timestamp: Date;
     searchCount: number;
 }
@@ -47,6 +48,10 @@ const loadHistory = (userId: string): SearchHistoryItem[] => {
             dateRange: item.dateRange ? {
                 start: new Date(item.dateRange.start),
                 end: new Date(item.dateRange.end),
+            } : undefined,
+            departureWindow: item.departureWindow ? {
+                start: new Date(item.departureWindow.start),
+                end: new Date(item.departureWindow.end),
             } : undefined,
         }));
     } catch (error) {
@@ -96,7 +101,8 @@ export const saveSearch = (
     source: Location,
     destination: Location,
     departureTime: Date,
-    dateRange?: { start: Date; end: Date }
+    dateRange?: DepartureWindow,
+    departureWindow?: DepartureWindow,
 ): void => {
     const searches = loadHistory(userId);
 
@@ -109,8 +115,11 @@ export const saveSearch = (
         // Route exists - increment count and update timestamp
         searches[existingIndex].searchCount += 1;
         searches[existingIndex].timestamp = new Date();
+        searches[existingIndex].source = source;
+        searches[existingIndex].destination = destination;
         searches[existingIndex].departureTime = departureTime;
         searches[existingIndex].dateRange = dateRange;
+        searches[existingIndex].departureWindow = departureWindow;
 
         // Move to front of array (most recent)
         const [updated] = searches.splice(existingIndex, 1);
@@ -124,6 +133,7 @@ export const saveSearch = (
             destination,
             departureTime,
             dateRange,
+            departureWindow,
             timestamp: new Date(),
             searchCount: 1,
         };

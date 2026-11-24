@@ -13,10 +13,21 @@ describe('mapbox', () => {
 
   it('puts departures in the same 15-minute slot into one cache key', () => {
     const a = cacheKey(andheri, bkc, new Date('2026-12-01T03:31:00Z'));
-    const b = cacheKey([72.84681, 19.11972], bkc, new Date('2026-12-01T03:44:00Z'));
+    const b = cacheKey(andheri, bkc, new Date('2026-12-01T03:44:00Z'));
     const c = cacheKey(andheri, bkc, new Date('2026-12-01T03:46:00Z'));
     expect(a).toBe(b);
     expect(a).not.toBe(c);
+  });
+
+  it('does not reuse directions for nearby pins', () => {
+    const at = new Date('2026-12-01T03:31:00Z');
+    expect(cacheKey(andheri, bkc, at)).not.toBe(cacheKey([72.84681, 19.11972], bkc, at));
+  });
+
+  it('keeps exact window samples distinct within a 15-minute cache slot', () => {
+    const start = new Date('2026-12-01T03:31:00Z');
+    const end = new Date('2026-12-01T03:44:00Z');
+    expect(cacheKey(andheri, bkc, start, true)).not.toBe(cacheKey(andheri, bkc, end, true));
   });
 
   it('requests driving-traffic with full overview and depart_at', async () => {

@@ -8,6 +8,8 @@ const C = -0.00109;
 const D = 0.000007;
 const MIN_KMH = 10;
 const MAX_KMH = 130;
+export const FUEL_REFERENCE_SPEED_KMH = 50;
+export const FUEL_REFERENCE_KMPL = 1 / litresPerKm(FUEL_REFERENCE_SPEED_KMH);
 
 // Tank-to-exhaust CO₂ for petrol, kg per litre.
 export const CO2_KG_PER_LITRE = 2.31;

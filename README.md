@@ -6,8 +6,9 @@ ORION answers three questions for a trip in Mumbai: which route, when to leave, 
 
 | Feature | Source | Status |
 |---|---|---|
+| Mumbai addresses and landmarks | OpenStreetMap via [Photon](https://github.com/komoot/photon#demo-server) | Live |
 | Route alternatives, distance, ETA | Mapbox Directions `driving-traffic` (live traffic for "leave now", typical traffic for later departures) | Live |
-| 24-hour timeline, best departure hour, best date in a range | Mapbox typical traffic, sampled every 2 hours | Live |
+| 24-hour timeline, best departure hour, and best departure in a time or date range | Mapbox typical traffic, with two-hour timeline samples and a separate comparison inside the selected range | Live |
 | Congestion colours on the route | Mapbox live congestion labels; for future trips, segment speed against a 60 km/h free-flow reference | Live |
 | Fuel and CO₂ per route | UK DfT TAG data book v1.18, Table A1.3.8 (petrol car speed–fuel curve), 2.31 kg CO₂ per litre | Live |
 | Traffic news | Google News RSS, filtered to Mumbai mobility stories, keyword categories | Live |
@@ -57,7 +58,8 @@ Tests: `npm test` in `server/` and `client/`, and `python3 ml/test_collect.py`. 
 ## Limits worth knowing
 
 - Mapbox's `duration` for future departures is unreliable in Mumbai, so ORION uses `duration_typical` for anything after "leave now" (see `PLAN.md`, P1.1).
-- The fuel curve describes the UK petrol fleet, not Indian cars. It ranks routes fairly, but treat the litres as an estimate.
+- The UK petrol-car model gives a reference of about 14.7 km/L at 50 km/h. Set your vehicle mileage in the fuel card to scale the estimate. CO₂ uses the petrol emissions factor.
+- Time ranges include both future bounds and sample departures up to 30, 60 or 120 minutes apart, depending on the length of the window. The app recommends the shortest estimated trip among those samples.
 - Google News RSS allows personal, non-commercial feed-reader use. Fine for this portfolio project; revisit before any commercial use.
 - Free tiers: Render sleeps after 15 idle minutes (the client pings it on load), TomTom allows 2,500 flow requests a day (the collector uses about 1,900), and GitHub pauses scheduled workflows after 60 days without repository activity.
 

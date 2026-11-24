@@ -41,9 +41,12 @@ export function toIstString(date: Date): string {
   return new Date(date.getTime() + IST_OFFSET_MS).toISOString().slice(0, 19) + '+05:30';
 }
 
-// ~110 m rounding on coordinates plus a 15-minute departure slot.
-export function cacheKey(origin: LngLat, destination: LngLat, departAt?: Date): string {
-  const point = ([lng, lat]: LngLat) => `${lng.toFixed(3)},${lat.toFixed(3)}`;
+// Preserve sub-metre endpoint accuracy so nearby places don't reuse a route to a different entrance.
+export function cacheKey(origin: LngLat, destination: LngLat, departAt?: Date, exactDeparture = false): string {
+  const point = ([lng, lat]: LngLat) => `${lng.toFixed(6)},${lat.toFixed(6)}`;
+  if (departAt && exactDeparture) {
+    return `${point(origin)};${point(destination)};exact;${toIstString(departAt)}`;
+  }
   const slot = Math.floor((departAt ?? new Date()).getTime() / SLOT_MS) * SLOT_MS;
   return `${point(origin)};${point(destination)};${departAt ? 'at' : 'now'};${slot}`;
 }
@@ -54,8 +57,8 @@ const cacheReady = () => mongoose.connection.readyState === 1;
  * Mapbox Directions (driving-traffic) with alternatives and per-segment annotations.
  * Omit departAt for "leave now" (live traffic); pass it for a future departure.
  */
-export async function getDirections(origin: LngLat, destination: LngLat, departAt?: Date): Promise<MapboxRoute[]> {
-  const key = cacheKey(origin, destination, departAt);
+export async function getDirections(origin: LngLat, destination: LngLat, departAt?: Date, exactDeparture = false): Promise<MapboxRoute[]> {
+  const key = cacheKey(origin, destination, departAt, exactDeparture);
   if (cacheReady()) {
     try {
       const hit = await DirectionsCache.findOne({ key }).lean<{ routes: MapboxRoute[] }>();
@@ -85,6 +88,9 @@ export async function getDirections(origin: LngLat, destination: LngLat, departA
   }
   if (!res.ok || !body.routes) {
     throw new MapboxError(`Mapbox Directions failed (${res.status} ${body.code ?? ''})`, 502);
+  }
+  if (!body.routes.length) {
+    throw new MapboxError('No route found between these points', 422);
   }
 
   if (cacheReady()) {

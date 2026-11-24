@@ -1,5 +1,5 @@
 // SearchHistory Component - Display past searches with clickable cards
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { SearchHistoryItem } from '../../services/searchHistoryService';
 import { getSearchHistory, deleteSearch, clearHistory } from '../../services/searchHistoryService';
@@ -9,7 +9,6 @@ interface SearchHistoryProps {
     onSelectSearch: (item: SearchHistoryItem) => void;
     theme?: 'light' | 'dark';
     isVisible?: boolean;
-    refreshKey?: number; // bump to reload after a new search is saved
 }
 
 const SearchHistory: React.FC<SearchHistoryProps> = ({
@@ -17,15 +16,9 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({
     onSelectSearch,
     theme = 'dark',
     isVisible = true,
-    refreshKey = 0,
 }) => {
-    const [history, setHistory] = useState<SearchHistoryItem[]>([]);
+    const [history, setHistory] = useState(() => getSearchHistory(userId));
     const [selectedId, setSelectedId] = useState<string | null>(null);
-
-    // Load history on mount, when userId changes, and after each saved search
-    useEffect(() => {
-        loadHistory();
-    }, [userId, refreshKey]);
 
     const loadHistory = () => {
         const searches = getSearchHistory(userId);
@@ -57,7 +50,8 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({
         return date.toLocaleTimeString('en-US', {
             hour: '2-digit',
             minute: '2-digit',
-            hour12: true
+            hour12: true,
+            timeZone: 'Asia/Kolkata',
         });
     };
 
@@ -65,7 +59,8 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({
         return date.toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
-            year: 'numeric'
+            year: 'numeric',
+            timeZone: 'Asia/Kolkata',
         });
     };
 
@@ -96,7 +91,7 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({
                 left: '2rem',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                width: '350px',
+                width: 'min(350px, calc(100vw - 3rem))',
                 maxHeight: '70vh',
                 background: theme === 'dark' ? 'rgba(20, 20, 20, 0.95)' : 'rgba(255, 255, 255, 0.95)',
                 backdropFilter: 'blur(20px)',
@@ -218,20 +213,21 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({
                                 )}
 
                                 {/* Route */}
-                                <div style={{
+                                <button type="button" style={{
                                     fontSize: '0.875rem',
                                     fontWeight: 600,
                                     color: theme === 'dark' ? '#e5e5e5' : '#1a1a1a',
                                     marginBottom: '0.5rem',
                                     paddingRight: item.searchCount >= 3 ? '7rem' : '2rem',
                                     lineHeight: 1.4,
+                                    textAlign: 'left',
                                 }}>
                                     <span style={{ opacity: 0.7 }}>📍</span> {item.source.name}
                                     <br />
                                     <span style={{ opacity: 0.5, fontSize: '0.75rem' }}>→</span>
                                     <br />
                                     <span style={{ opacity: 0.7 }}>🎯</span> {item.destination.name}
-                                </div>
+                                </button>
 
                                 {/* Metadata */}
                                 <div style={{
@@ -247,7 +243,9 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({
                                         padding: '0.25rem 0.5rem',
                                         borderRadius: '0.375rem',
                                     }}>
-                                        🕐 {formatTime(item.departureTime)}
+                                        🕐 {item.departureWindow
+                                            ? `${formatTime(item.departureWindow.start)}–${formatTime(item.departureWindow.end)}`
+                                            : formatTime(item.departureTime)}
                                     </span>
                                     <span style={{
                                         background: theme === 'dark' ? 'rgba(168, 85, 247, 0.2)' : 'rgba(168, 85, 247, 0.1)',

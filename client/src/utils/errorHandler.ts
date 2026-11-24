@@ -2,8 +2,8 @@
 export const getErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
     if ('response' in error) {
-      const axiosError = error as { response?: { data?: { error?: string } } };
-      return axiosError.response?.data?.error || error.message;
+      const axiosError = error as { response?: { data?: { error?: string; message?: string } } };
+      return axiosError.response?.data?.error || axiosError.response?.data?.message || error.message;
     }
     return error.message;
   }

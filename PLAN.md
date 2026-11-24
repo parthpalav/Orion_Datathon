@@ -7,6 +7,7 @@ This file is the single source of truth for the rebuild. Any agent or person pic
 - **Current phase:** P4 (data collection). P0, P2 and P3 agent tasks are done. P1.2 and P1.3 wait on keys.
 - **Next task:** everything left needs keys: P1.2 and P4 live runs (TomTom), P1.3, P5.2 summaries and P6 (Gemini). P7 needs 3 weeks of P4 data. P8 can be prepared. P4.2 and P4.3 are written and wait on `TOMTOM_API_KEY` plus GitHub secrets for their live check. P1.2 and P1.3 wait on keys from P0.7.
 - **Blockers:** waiting on the user for P0.2 (rotate secrets), P0.4 (purge history) and P0.7 (Gemini and TomTom keys).
+- **Local demo:** Signup includes international calling codes and password feedback. Mumbai landmark search, anchored map pins, live and scheduled routes, and search history passed a local browser walkthrough. Fuel mileage adjustment and departure windows also passed locally (P8.7). The deployed walkthrough is pending (P8.4).
 - **Last updated:** 2026-11-24
 
 ## How to use this file
@@ -198,6 +199,10 @@ Scratch scripts only, outside `src/`. Record results under Decisions.
 - [ ] **P8.2** Deploy `client/dist` to Firebase Hosting with production env. Build with `VITE_API_URL=https://orionmaps-api.onrender.com/api npm run build`, since the root `.env` holds local values.
 - [x] **P8.3** Rewrite `README.md`: what is real, architecture, local setup, data sources, limits.
 - [ ] **P8.4** Write and run an end-to-end demo script on the deployed URLs: sign up → plan Andheri→BKC with a date range → timeline → corridor heatmap → ATLAS question → news.
+- [x] **P8.5** Improve signup with an international calling-code picker defaulting to India, a password visibility toggle, and a live strength meter below the password field.
+- [x] **P8.6** Improve Mumbai place search and pin placement, default departures to the current Mumbai date and time, and verify local route planning from search through results.
+- [x] **P8.7** Show the fuel model's reference mileage and let drivers adjust it. Compare departures within a time window and show the quickest sampled trip and estimated travel-time range.
+  - Verified locally with live Mapbox directions, an overnight window, history replay, a 390px browser viewport, and a keyboard adjustment of the fuel slider.
 
 ## Verification after every phase
 
@@ -212,6 +217,9 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 
 ## Decisions
 
+- **2026-11-24** P8.7 was added at the user's request. Mileage starts at the existing petrol curve's reference of 14.7 km/L at 50 km/h. Custom mileage scales the segment fuel and petrol CO₂ estimates in the browser and lasts until the route page reloads. Time windows check both eligible bounds and sample at 30-, 60- or 120-minute intervals depending on span. The recommended time minimizes ETA and determines the route shown. Overnight windows and the existing date-range mode are supported.
+- **2026-11-24** P8.6 was added after the user reported missing landmarks, lagging pins and an empty departure date. Mapbox Geocoding v5 dropped landmarks, and Mapbox Search Box does not list India as supported. Use OpenStreetMap via the low-traffic Photon demo service for Mumbai-area search and accept coordinates as a fallback. Mapbox renders pins and calculates directions. The planner and timeline use Mumbai time.
+- **2026-11-24** P8.5 was added at the user's request. Signup stores the normalized phone number in E.164 format. The strength meter uses zxcvbn's guessability scores and gives advisory feedback.
 - **2026-11-24** Scope: portfolio/demo-grade, Mumbai only, free tiers only.
 - **2026-11-24** LLM: Gemini free API through its OpenAI-compatible endpoint, reusing the existing `openai` SDK. Note: on the Gemini free tier, Google may use prompts to improve its products. Do not send user personal data in prompts.
 - **2026-11-24** Untracked `client/.env.development` as well as `.env.production`. `.gitignore` now ignores every `.env.*` except `.env.example`. Copy `client/.env.example` to `client/.env.development` for local dev.
@@ -263,3 +271,7 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** (Claude Opus 5.5) P5.1 done: Google News RSS headlines with relevance filter and dedupe, 4 tests.
 - **2026-11-24** (Claude Opus 5.5) P5.2 partly done (real headlines, keyword categories, cache; Gemini summaries wait on the key). P5.3 done: cards link to real articles, badge colour bug fixed.
 - **2026-11-24** (Claude Opus 5.5) P8.1 code part done (warm-up ping); P8.3 done (README rewritten around what is real, setup, sources and limits).
+- **2026-11-24** (Codex) P8.4 local prep: localised the signup prompts for India, verified the preview and email registration, and prepared the manual demo walkthrough.
+- **2026-11-24** (Codex) P8.5 done. Client and server builds and tests pass, including signup phone normalization cases.
+- **2026-11-24** (Codex) P8.6 done. Live browser verification covered Gateway of India to Phoenix Marketcity, pin placement and panning, route alternatives, timeline, history reload, departure ranges and phone-width controls.
+- **2026-11-24** (Codex) P8.7 done. Client and server builds and tests pass. Live Mapbox browser verification covered the overnight recommendation, matching route, mileage and CO₂ updates without a new request, history replay, and specific departure mode.
