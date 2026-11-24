@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const router = express.Router();
 
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5000';
+const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5001';
 
 /**
  * Predict traffic congestion for a single point

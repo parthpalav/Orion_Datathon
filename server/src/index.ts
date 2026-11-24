@@ -1,16 +1,11 @@
+import './config/env';
 import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-import path from 'path';
 import connectDB from './config/db';
 import authRoutes from './routes/auth';
 import mlRoutes from './routes/ml';
 import chatRoutes from './routes/chat';
 import newsRoutes from './routes/news';
-
-// Load environment variables (root first, then server/.env overrides)
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-dotenv.config({ path: path.resolve(__dirname, '../.env'), override: true });
 
 // Refuse to boot without required secrets: a missing JWT_SECRET would make tokens forgeable.
 const missingEnv = ['JWT_SECRET', 'MONGO_URI'].filter((key) => !process.env[key]);
@@ -21,18 +16,15 @@ if (missingEnv.length > 0) {
 
 // Initialize Express app
 const app: Application = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
+const corsOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 // Middleware
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://orion-81736.web.app',
-    'https://orion-81736.firebaseapp.com',
-    'https://orionmaps.xyz',
-    'https://www.orionmaps.xyz'
-  ],
+  origin: corsOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']

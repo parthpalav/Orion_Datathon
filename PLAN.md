@@ -5,8 +5,8 @@ This file is the single source of truth for the rebuild. Any agent or person pic
 ## Status
 
 - **Current phase:** P1 (feasibility spike). P0 agent tasks are done.
-- **Next task:** P1.2 (needs `TOMTOM_API_KEY` in the root `.env`). If keys are not available yet, continue with P2.
-- **Blockers:** P0.2 and P0.4 are waiting on the user. P1 needs a TomTom key and a Gemini key in `server/.env`.
+- **Next task:** P2.3. P1.2 and P1.3 wait on keys from P0.7.
+- **Blockers:** waiting on the user for P0.2 (rotate secrets), P0.4 (purge history), P0.6 (new MongoDB cluster) and P0.7 (API keys).
 - **Last updated:** 2026-11-24
 
 ## How to use this file
@@ -74,6 +74,13 @@ React (Firebase Hosting) ──▶ Express (Render free) ──▶ Mapbox Direct
 
   - After the force-push, your old local copy has diverged. Re-clone it, or run `git fetch origin && git reset --hard origin/main` in it after copying out any uncommitted work.
   - Accept: `git log -p --all | grep rc_` finds nothing.
+- [ ] **P0.6 USER** Create a new MongoDB Atlas M0 (free) cluster. The old cluster in `server/.env` no longer exists (its DNS returns NXDOMAIN), so login and signup cannot work.
+  - Create a database user, allow network access from `0.0.0.0/0` (Render and GitHub Actions have no fixed IPs), and put the connection string in `server/.env` as `MONGO_URI`.
+  - Accept: `cd server && npm run dev` logs `MongoDB connected`.
+- [ ] **P0.7 USER** Get the API keys the next phases need, and put them in `server/.env`:
+  - `GEMINI_API_KEY` from Google AI Studio (aistudio.google.com).
+  - `TOMTOM_API_KEY` from developer.tomtom.com (free tier).
+  - `MAPBOX_TOKEN`: the same `pk.` token as `client/.env.development` is fine.
 - [x] **P0.5** Server fails fast at boot if `JWT_SECRET` or `MONGO_URI` is missing. Remove the hardcoded JWT secret fallbacks in `server/src/routes/auth.ts`.
   - Accept: starting the server without `JWT_SECRET` exits with a clear error.
 
@@ -101,7 +108,7 @@ Scratch scripts only, outside `src/`. Record results under Decisions.
   - Docs (done): `AUTHENTICATION.md`, `QUICKSTART.md`, `SETUP_SUMMARY.md`, `README_AUTH.md`, `DEPLOYMENT.md`, `FIREBASE_DEPLOYMENT.md`, `ML_INTEGRATION.md`, `RENDER_ENV_SETUP.md`, `server/AUTH_TESTING.md`.
   - Scripts and config: `deploy*.sh`, `start-*.sh`, `setup-ml-service.sh`, the `firebase.json` functions block.
   - Accept: `npm run build` passes in `client/` and `server/`.
-- [ ] **P2.2** Clean environment config.
+- [x] **P2.2** Clean environment config.
   - One `server/.env.example` and one `client/.env.example`.
   - Trim `render.yaml` to variables the code reads. Add `MONGO_URI`, `GEMINI_API_KEY`, `MAPBOX_SECRET_TOKEN`, `CORS_ORIGINS`.
   - Read `CORS_ORIGINS` in `server/src/index.ts`.
@@ -214,6 +221,9 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
   - P3 plan: colour future routes from scaled segment speeds rather than `congestion`, and scale segment speeds so their total time matches `duration_typical` before computing fuel.
   - `depart_at` with no offset (local time at origin) and with `+05:30` agree within about 2 minutes. Use the explicit `+05:30` form.
   - The public `pk.` token works for Directions. The server can reuse it until a separate token is created.
+- **2026-11-24** The server now reads only `server/.env` (through `server/src/config/env.ts`, imported first). The root `.env` is no longer loaded. Deleted the stray root `package.json` and `package-lock.json`.
+- **2026-11-24** Renamed the planned `MAPBOX_SECRET_TOKEN` to `MAPBOX_TOKEN`, since P1.1 showed the public `pk.` token works for Directions.
+- **2026-11-24** Fixed the default ports: the server defaults to 3000 and the legacy ML proxy defaults to 5001 (where Flask actually listens). The local `server/.env` sets `PORT=3001`, matching `client/.env.development`.
 - **2026-11-24** Retire the Flask ML service. The old model trained on random synthetic San Francisco data with target leakage, so none of it is kept except the TomTom request logic.
 
 ## Session log
@@ -221,3 +231,4 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** (Claude Opus 5.5) Audited the whole repo, wrote this plan. Done: P0.1, P0.3, P0.5, and the docs/scripts part of P2.1. Wrote the P0.4 history-purge commands.
 - **2026-11-24** (Claude Opus 5.5) P1.1 done: Mapbox works for Mumbai via `duration_typical`; details under Decisions.
 - **2026-11-24** (Claude Opus 5.5) P2.1 done: removed dead pages, the duplicate menu, the `mongodb` client dependency and the Firebase functions block. Client build passes.
+- **2026-11-24** (Claude Opus 5.5) P2.2 done: env examples, trimmed `render.yaml`, CORS from env, env loaded before routes. Found the MongoDB cluster is gone and added P0.6 and P0.7.
