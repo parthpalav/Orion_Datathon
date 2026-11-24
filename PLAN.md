@@ -4,8 +4,8 @@ This file is the single source of truth for the rebuild. Any agent or person pic
 
 ## Status
 
-- **Current phase:** P1 (feasibility spike). P0 agent tasks are done.
-- **Next task:** P2.4. P1.2 and P1.3 wait on keys from P0.7.
+- **Current phase:** P3 (real route intelligence). P0 and P2 agent tasks are done. P1.2 and P1.3 wait on keys.
+- **Next task:** P3.1 (it only needs Mapbox, which already works). P1.2 and P1.3 wait on keys from P0.7.
 - **Blockers:** waiting on the user for P0.2 (rotate secrets), P0.4 (purge history), P0.6 (new MongoDB cluster) and P0.7 (API keys).
 - **Last updated:** 2026-11-24
 
@@ -119,11 +119,11 @@ Scratch scripts only, outside `src/`. Record results under Decisions.
   - `express-rate-limit` on `/api/auth/*`, `/api/chat`, `/api/news`.
   - JSON body size limit and a central error handler.
   - Accept: unauthenticated `POST /api/chat` returns 401.
-- [ ] **P2.4** Tests and CI.
+- [x] **P2.4** Tests and CI.
   - `vitest` + `supertest` in `server/`, `vitest` in `client/`.
   - `.github/workflows/ci.yml` runs build and tests for both.
   - Move `@types/*` and `typescript` to devDependencies in `server/package.json`.
-  - Accept: CI is green on a pushed branch.
+  - Accept: CI is green on a pushed branch. (Verified locally: `npm ci && npm run build && npm test` passes in both apps. CI runs on the user's next push.)
 
 ### P3: Real route intelligence (server-side)
 
@@ -225,6 +225,7 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** Renamed the planned `MAPBOX_SECRET_TOKEN` to `MAPBOX_TOKEN`, since P1.1 showed the public `pk.` token works for Directions.
 - **2026-11-24** Fixed the default ports: the server defaults to 3000 and the legacy ML proxy defaults to 5001 (where Flask actually listens). The local `server/.env` sets `PORT=3001`, matching `client/.env.development`.
 - **2026-11-24** P2.3: `/api/ml` stays unauthenticated until it is deleted in P4.4, because the current client calls it with `fetch` and no token. Removed its `/retrain` proxy (the Flask endpoint was broken). Auth errors no longer return internal error messages.
+- **2026-11-24** P2.4: split `server/src/app.ts` (Express app, importable by tests) from `server/src/index.ts` (env check, DB connect, listen). Bumped `@types/node` to 22 because vitest 5 requires it, and set `engines.node >=22`.
 - **2026-11-24** Retire the Flask ML service. The old model trained on random synthetic San Francisco data with target leakage, so none of it is kept except the TomTom request logic.
 
 ## Session log
@@ -234,3 +235,4 @@ Server-side search history sync, paid traffic APIs, native mobile, real-time pus
 - **2026-11-24** (Claude Opus 5.5) P2.1 done: removed dead pages, the duplicate menu, the `mongodb` client dependency and the Firebase functions block. Client build passes.
 - **2026-11-24** (Claude Opus 5.5) P2.2 done: env examples, trimmed `render.yaml`, CORS from env, env loaded before routes. Found the MongoDB cluster is gone and added P0.6 and P0.7.
 - **2026-11-24** (Claude Opus 5.5) P2.3 done: shared auth middleware, rate limits, body limits, error handler. The 401 check is verified by a test in P2.4.
+- **2026-11-24** (Claude Opus 5.5) P2.4 done: vitest in both apps (server 4 tests, client 1), GitHub Actions CI. Phase P2 complete.
